@@ -1,0 +1,16 @@
+version: "3.8"
+
+services:
+  api-proxy:
+    build: ./api-proxy
+    container_name: realtime-translation-api-proxy
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - AZURE_TTS_KEY=${AZURE_TTS_KEY}
+      - AZURE_SPEECH_KEY=${AZURE_SPEECH_KEY}
+      - AZURE_SPEECH_REGION=${AZURE_SPEECH_REGION:-westus}
+      - PORT=3010
+    ports:
+      - "3010:3010"
+    restart: unless-stopped
+
