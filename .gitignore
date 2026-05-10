@@ -1,4 +1,5 @@
 node_modules/
+.worktrees/
 .env
 .env.*
 !.env.example
@@ -9,4 +10,3 @@ coverage/
 *.tmp
 .DS_Store
 Thumbs.db
-
