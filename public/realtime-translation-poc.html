@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenAI Realtime Translation POC</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Microsoft YaHei", Arial, sans-serif; color: #1f2937; background: #f5f7fb; }
+    main { width: min(1180px, calc(100vw - 32px)); margin: 24px auto; }
+    h1 { font-size: 1.6rem; margin: 0 0 18px; letter-spacing: 0; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 12px; border: 1px solid #d7dde8; background: #fff; border-radius: 6px; }
+    label { display: inline-flex; align-items: center; gap: 6px; font-size: 0.95rem; }
+    select, button { height: 36px; border-radius: 4px; border: 1px solid #c8d0dc; background: #fff; padding: 0 10px; font-size: 0.95rem; }
+    button { color: #fff; border-color: #315adf; background: #3f66f3; cursor: pointer; }
+    button.secondary { color: #1f2937; border-color: #c8d0dc; background: #fff; }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+    .status { min-height: 42px; margin: 12px 0; padding: 10px 12px; border: 1px solid #d7dde8; border-radius: 6px; background: #fff; color: #344054; }
+    .status.error { color: #842029; background: #f8d7da; border-color: #f5c2c7; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .panel { min-height: 48vh; padding: 14px; border: 1px solid #d7dde8; border-radius: 6px; background: #fff; }
+    .panel h2 { margin: 0 0 12px; font-size: 1rem; font-weight: 700; }
+    .transcript { min-height: 34vh; white-space: pre-wrap; font-size: 1.45rem; line-height: 1.55; }
+    .metrics { margin-top: 12px; color: #667085; font-size: 0.9rem; }
+    audio { width: 100%; margin-top: 12px; }
+    @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } .transcript { font-size: 1.2rem; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>OpenAI Realtime Translation POC</h1>
+    <div class="toolbar">
+      <label>Source
+        <select id="sourceLanguage">
+          <option value="auto">Auto</option>
+          <option value="en" selected>English</option>
+          <option value="zh">Chinese</option>
+        </select>
+      </label>
+      <label>Target
+        <select id="targetLanguage">
+          <option value="zh" selected>Chinese</option>
+          <option value="en">English</option>
+          <option value="ja">Japanese</option>
+          <option value="ko">Korean</option>
+          <option value="es">Spanish</option>
+          <option value="fr">French</option>
+        </select>
+      </label>
+      <label>Voice
+        <select id="voice">
+          <option value="alloy" selected>alloy</option>
+          <option value="verse">verse</option>
+          <option value="marin">marin</option>
+          <option value="cedar">cedar</option>
+        </select>
+      </label>
+      <button id="startBtn">Start realtime translation</button>
+      <button id="stopBtn" class="secondary" disabled>Stop</button>
+    </div>
+    <div id="status" class="status">准备连接。请确认 `api-proxy` 可访问，并且后端配置了 `OPENAI_API_KEY`。</div>
+    <audio id="remoteAudio" controls autoplay></audio>
+    <div class="grid">
+      <section class="panel">
+        <h2>Source transcript</h2>
+        <div id="sourceText" class="transcript"></div>
+      </section>
+      <section class="panel">
+        <h2>Translated transcript</h2>
+        <div id="targetText" class="transcript"></div>
+        <div id="metrics" class="metrics"></div>
+      </section>
+    </div>
+  </main>
+  <script type="module">
+    import { OpenAIRealtimeTranslator } from './realtime-translation.mjs';
+
+    const sourceLanguage = document.getElementById('sourceLanguage');
+    const targetLanguage = document.getElementById('targetLanguage');
+    const voice = document.getElementById('voice');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const statusEl = document.getElementById('status');
+    const sourceText = document.getElementById('sourceText');
+    const targetText = document.getElementById('targetText');
+    const metrics = document.getElementById('metrics');
+    const remoteAudio = document.getElementById('remoteAudio');
+
+    const translator = new OpenAIRealtimeTranslator({
+      remoteAudio,
+      onStatus(message) {
+        statusEl.textContent = message;
+        statusEl.className = 'status';
+      },
+      onError(error) {
+        statusEl.textContent = error.message || String(error);
+        statusEl.className = 'status error';
+      },
+      onTranscript(update) {
+        sourceText.textContent = update.sourceText;
+        targetText.textContent = update.targetText;
+        if (update.metrics.firstAudioAt) {
+          metrics.textContent = `first translated audio: ${Math.round(update.metrics.firstAudioAt - update.metrics.startedAt)}ms`;
+        }
+      }
+    });
+
+    startBtn.addEventListener('click', async () => {
+      sourceText.textContent = '';
+      targetText.textContent = '';
+      metrics.textContent = '';
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+      try {
+        await translator.start({
+          sourceLanguage: sourceLanguage.value,
+          targetLanguage: targetLanguage.value,
+          voice: voice.value
+        });
+      } catch (error) {
+        translator.stop();
+        statusEl.textContent = error.message || String(error);
+        statusEl.className = 'status error';
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+      }
+    });
+
+    stopBtn.addEventListener('click', () => {
+      translator.stop();
+      statusEl.textContent = '已停止。';
+      statusEl.className = 'status';
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+    });
+  </script>
+</body>
+</html>

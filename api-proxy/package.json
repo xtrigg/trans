@@ -4,7 +4,8 @@
   "description": "API代理服务，用于安全转发API请求",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test"
   },
   "dependencies": {
     "axios": "^1.6.2",

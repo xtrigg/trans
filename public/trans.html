@@ -521,6 +521,27 @@
       background: #eee;
       color: #333;
     }
+    .status-message {
+      display: none;
+      margin: 0 0 10px;
+      padding: 8px 10px;
+      border-radius: 4px;
+      border: 1px solid transparent;
+      font-size: 0.95rem;
+      line-height: 1.35;
+    }
+    .status-message.error {
+      display: block;
+      color: #842029;
+      background: #f8d7da;
+      border-color: #f5c2c7;
+    }
+    .status-message.info {
+      display: block;
+      color: #055160;
+      background: #cff4fc;
+      border-color: #b6effb;
+    }
   </style>
 </head>
 <body>
@@ -542,6 +563,7 @@
         </label>
       </span>
     </div>
+    <div id="statusMessage" class="status-message" role="status" aria-live="polite"></div>
 
     <!-- 左右文本框 -->
     <div class="text-columns">
@@ -685,6 +707,25 @@
     const overlay = document.getElementById("sttOverlay");
     const overlayTranscription = document.getElementById("overlayTranscription");
     const overlayStopBtn = document.getElementById("overlayStopBtn");
+    const statusMessage = document.getElementById("statusMessage");
+
+    function showUserError(message) {
+      if (!statusMessage) return;
+      statusMessage.textContent = message;
+      statusMessage.className = "status-message error";
+    }
+
+    function showUserInfo(message) {
+      if (!statusMessage) return;
+      statusMessage.textContent = message;
+      statusMessage.className = "status-message info";
+    }
+
+    function clearUserMessage() {
+      if (!statusMessage) return;
+      statusMessage.textContent = "";
+      statusMessage.className = "status-message";
+    }
 
     // BLE UUID 常量定义
     const voiceServiceUUID1 = '0000ffe0-0000-1000-8000-00805f9b34fb';
@@ -824,6 +865,30 @@
       }
     }
 
+    function ensureSelectAllControl() {
+      const container = document.getElementById("logContainer");
+      if (!container) return null;
+
+      let selectAllCheckbox = document.getElementById('selectAllCheckbox');
+      if (selectAllCheckbox) return selectAllCheckbox;
+
+      const selectAllContainer = document.createElement("div");
+      selectAllContainer.className = "select-all-container";
+
+      selectAllCheckbox = document.createElement("input");
+      selectAllCheckbox.type = "checkbox";
+      selectAllCheckbox.id = "selectAllCheckbox";
+
+      const label = document.createElement("label");
+      label.htmlFor = "selectAllCheckbox";
+      label.textContent = "Select All";
+
+      selectAllContainer.appendChild(selectAllCheckbox);
+      selectAllContainer.appendChild(label);
+      container.appendChild(selectAllContainer);
+      return selectAllCheckbox;
+    }
+
     // 从localStorage加载历史记录
     function loadHistoryFromStorage() {
       if (!currentDeviceId) return;
@@ -838,6 +903,7 @@
         const container = document.getElementById("logContainer");
         if (container) {
           container.innerHTML = '';
+          ensureSelectAllControl();
         }
 
         // 恢复历史记录到界面和数组
@@ -3352,7 +3418,8 @@
         return await callLocalLLM(msgs, 0);
       } catch (err) {
         console.error("translate fail:", err);
-        return "";
+        showUserError("翻译服务暂时不可用，请检查 /local-llm 代理或本地模型服务。");
+        throw err;
       }
     }
 
@@ -3480,6 +3547,7 @@ Please provide the best combined transcription:`
           console.log("[TTS] OpenAI TTS complete");
         } catch (openaiErr) {
           console.error("[TTS] All TTS failed:", openaiErr);
+          showUserError("TTS 生成失败，请检查 Fish.audio/OpenAI TTS 代理配置。");
         }
       } finally {
         setTimeout(() => { isTTSSpeaking = false; }, 200);
@@ -3554,6 +3622,7 @@ Please provide the best combined transcription:`
      * 6. Deepgram STT Real-time Transcription + OpenAI Whisper Complete Audio
      *************************************************************/
     async function startRecording() {
+      clearUserMessage();
       // 停止当前TTS播放
       stopCurrentTTS();
 
@@ -3597,6 +3666,7 @@ Please provide the best combined transcription:`
         }, 500);
       } else {
         console.error("[STT] 初始化失败");
+        showUserError("实时转写初始化失败，请检查麦克风权限和 STT 服务。");
         recordBtn.innerHTML = '<i class="fas fa-microphone"></i> Record';
       }
     }
@@ -3637,7 +3707,7 @@ Please provide the best combined transcription:`
         }, 500);
       }).catch(err => {
         console.error("Failed to get microphone permission:", err);
-        alert("Cannot get microphone permission: " + err.message);
+        showUserError("麦克风权限被拒绝或设备不可用：" + err.message);
         recordBtn.innerHTML = '<i class="fas fa-microphone"></i> Record';
       });
     }
@@ -3690,6 +3760,7 @@ Please provide the best combined transcription:`
         }
       } catch (err) {
         console.error("[录音] 翻译/TTS失败:", err);
+        showUserError("录音结束后的翻译或 TTS 处理失败。");
       }
 
       // 恢复按钮
@@ -4556,20 +4627,18 @@ Please provide the best combined transcription:`
 
     // 初始化函数
     function initializeDefaults() {
-      // 确保下拉框显示正确的默认值
-      document.getElementById("manualMainLang").value = "zh";
-      document.getElementById("manualTargetLang").value = "en";
-
-      // 设置全局变量
-      mainLanguage = "zh";
-      targetLanguage = "en";
+      // Standalone UI uses compact language spans instead of legacy select controls.
+      mainLanguage = "en";
+      targetLanguage = "zh";
       userHasManualMain = true;
       userHasManualTarget = true;
+      document.getElementById("spanMainLang").textContent = mainLanguage.toUpperCase();
+      document.getElementById("spanTargetLang").textContent = targetLanguage.toUpperCase();
 
       // 更新状态显示
       updateStatusUI();
 
-      console.log("默认语言设置已初始化: ML=zh, TL=en");
+      console.log("默认语言设置已初始化: ML=en, TL=zh");
     }
 
     // 导出选中的历史记录为txt文件
@@ -4614,8 +4683,9 @@ Please provide the best combined transcription:`
     
     // 全选/取消全选功能
     function toggleSelectAll() {
-      const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+      const selectAllCheckbox = ensureSelectAllControl();
       const checkboxes = document.querySelectorAll('.log-item-checkbox');
+      if (!selectAllCheckbox) return;
       
       checkboxes.forEach(checkbox => {
         checkbox.checked = selectAllCheckbox.checked;
@@ -4652,7 +4722,7 @@ Please provide the best combined transcription:`
       document.getElementById('exportSelectedBtn').addEventListener('click', exportSelectedRecords);
 
       // 绑定全选复选框事件
-      document.getElementById('selectAllCheckbox').addEventListener('change', toggleSelectAll);
+      ensureSelectAllControl().addEventListener('change', toggleSelectAll);
     });
 
     // 初始化
