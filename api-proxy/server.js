@@ -6,24 +6,16 @@ const path = require('path');
 const { Readable } = require('stream');
 
 function buildRealtimeTranslationSessionPayload({
-  sourceLanguage = 'auto',
-  targetLanguage = 'zh',
-  voice = 'alloy'
+  targetLanguage = 'zh'
 } = {}) {
   const session = {
     model: 'gpt-realtime-translate',
     audio: {
-      input: {},
       output: {
-        language: targetLanguage,
-        voice
+        language: targetLanguage
       }
     }
   };
-
-  if (sourceLanguage && sourceLanguage !== 'auto') {
-    session.audio.input.language = sourceLanguage;
-  }
 
   return { session };
 }

@@ -8,7 +8,7 @@ test('exports app factory and realtime translation session payload builder', () 
   assert.equal(typeof proxy.buildRealtimeTranslationSessionPayload, 'function');
 });
 
-test('builds a gpt-realtime-translate session payload with target language', () => {
+test('builds a gpt-realtime-translate session payload with only supported target language', () => {
   const payload = proxy.buildRealtimeTranslationSessionPayload({
     targetLanguage: 'zh',
     sourceLanguage: 'en',
@@ -17,8 +17,8 @@ test('builds a gpt-realtime-translate session payload with target language', () 
 
   assert.equal(payload.session.model, 'gpt-realtime-translate');
   assert.equal(payload.session.audio.output.language, 'zh');
-  assert.equal(payload.session.audio.output.voice, 'alloy');
-  assert.equal(payload.session.audio.input.language, 'en');
+  assert.equal('input' in payload.session.audio, false);
+  assert.equal('voice' in payload.session.audio.output, false);
 });
 
 test('realtime translation endpoint refuses missing OpenAI key', async () => {

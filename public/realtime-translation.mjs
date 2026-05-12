@@ -21,11 +21,9 @@ export function getRealtimeLanguage(value) {
   return map[normalized] || normalized || 'auto';
 }
 
-export function buildSessionRequestBody({ sourceLanguage = 'auto', targetLanguage = 'zh', voice = 'alloy' } = {}) {
+export function buildSessionRequestBody({ targetLanguage = 'zh' } = {}) {
   return {
-    sourceLanguage: getRealtimeLanguage(sourceLanguage),
-    targetLanguage: getRealtimeLanguage(targetLanguage),
-    voice
+    targetLanguage: getRealtimeLanguage(targetLanguage)
   };
 }
 

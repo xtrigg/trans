@@ -15,9 +15,9 @@ test('maps display languages to OpenAI realtime language codes', () => {
 test('builds session request body for translation target', () => {
   const body = buildSessionRequestBody({ sourceLanguage: 'en', targetLanguage: 'zh', voice: 'alloy' });
 
-  assert.equal(body.sourceLanguage, 'en');
   assert.equal(body.targetLanguage, 'zh');
-  assert.equal(body.voice, 'alloy');
+  assert.equal('sourceLanguage' in body, false);
+  assert.equal('voice' in body, false);
 });
 
 test('collects source and target transcript deltas from realtime events', () => {

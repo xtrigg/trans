@@ -30,13 +30,6 @@
   <main>
     <h1>OpenAI Realtime Translation POC</h1>
     <div class="toolbar">
-      <label>Source
-        <select id="sourceLanguage">
-          <option value="auto">Auto</option>
-          <option value="en" selected>English</option>
-          <option value="zh">Chinese</option>
-        </select>
-      </label>
       <label>Target
         <select id="targetLanguage">
           <option value="zh" selected>Chinese</option>
@@ -45,14 +38,6 @@
           <option value="ko">Korean</option>
           <option value="es">Spanish</option>
           <option value="fr">French</option>
-        </select>
-      </label>
-      <label>Voice
-        <select id="voice">
-          <option value="alloy" selected>alloy</option>
-          <option value="verse">verse</option>
-          <option value="marin">marin</option>
-          <option value="cedar">cedar</option>
         </select>
       </label>
       <button id="startBtn">Start realtime translation</button>
@@ -75,9 +60,7 @@
   <script type="module">
     import { OpenAIRealtimeTranslator } from './realtime-translation.mjs';
 
-    const sourceLanguage = document.getElementById('sourceLanguage');
     const targetLanguage = document.getElementById('targetLanguage');
-    const voice = document.getElementById('voice');
     const startBtn = document.getElementById('startBtn');
     const stopBtn = document.getElementById('stopBtn');
     const statusEl = document.getElementById('status');
@@ -113,9 +96,7 @@
       stopBtn.disabled = false;
       try {
         await translator.start({
-          sourceLanguage: sourceLanguage.value,
-          targetLanguage: targetLanguage.value,
-          voice: voice.value
+          targetLanguage: targetLanguage.value
         });
       } catch (error) {
         translator.stop();
