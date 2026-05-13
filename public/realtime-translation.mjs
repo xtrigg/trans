@@ -69,7 +69,20 @@ export class OpenAIRealtimeTranslator {
     this.transcriptState = { sourceText: '', targetText: '' };
     this.onStatus('正在申请麦克风权限...');
 
-    this.localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error('当前浏览器不支持麦克风录音。请用最新版 Chrome、Edge 或 Safari，并通过 HTTPS 打开页面。');
+    }
+
+    try {
+      this.localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (error) {
+      if (error?.name === 'NotAllowedError' || error?.name === 'PermissionDeniedError') {
+        throw new Error('麦克风权限被拒绝。请在浏览器地址栏允许麦克风后再开始。');
+      }
+      throw new Error(`无法打开麦克风：${error?.message || String(error)}`);
+    }
+
+    this.onStatus('麦克风已开启，正在创建实时翻译连接...');
     this.pc = new RTCPeerConnection();
 
     this.pc.ontrack = (event) => {
@@ -108,7 +121,7 @@ export class OpenAIRealtimeTranslator {
       type: 'answer',
       sdp: await sdpResponse.text()
     });
-    this.onStatus('实时翻译已连接。');
+    this.onStatus('实时翻译已连接。正在听，请直接说话。');
   }
 
   async createClientSecret(options) {

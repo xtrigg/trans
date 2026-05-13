@@ -69,7 +69,8 @@ test('serves realtime translation POC from the proxy for local development', asy
     const html = await resp.text();
 
     assert.equal(resp.status, 200);
-    assert.match(html, /OpenAI Realtime Translation POC/);
+    assert.match(html, /实时语音翻译/);
+    assert.match(html, /开始录音并实时翻译/);
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }
