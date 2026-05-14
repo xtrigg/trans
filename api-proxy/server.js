@@ -15,20 +15,38 @@ function createApp(options = {}) {
   const azureSpeechRegion = options.azureSpeechRegion ?? process.env.AZURE_SPEECH_REGION ?? 'westus';
   const httpClient = options.httpClient ?? axios;
 
-  function buildReplyTranslationPayload(text) {
+  function trimContext(value) {
+    return String(value || '').trim().slice(-2000);
+  }
+
+  function buildReplyTranslationPayload({
+    text,
+    contextSource = '',
+    contextTranslation = ''
+  }) {
     return {
       model: process.env.OPENAI_REPLY_MODEL || 'gpt-5.2',
       max_output_tokens: 500,
       instructions: [
         'You help a Chinese-speaking parent or business user reply in spoken English during live meetings.',
         'Convert the Chinese input into natural, polite, easy-to-read spoken English.',
+        'Use the meeting context when it is provided, especially to preserve names, times, and what the other person just said.',
         'Keep the meaning faithful. Do not add facts.',
         'Return JSON with english, short_version, and notes.',
         'english should be the recommended full reply.',
         'short_version should be a shorter sentence the user can read aloud if they are nervous.',
         'notes should be brief Chinese guidance about tone or pronunciation, or an empty string.'
       ].join('\n'),
-      input: `Chinese reply draft:\n${text}`,
+      input: [
+        'Meeting context source transcript:',
+        trimContext(contextSource) || '(none)',
+        '',
+        'Meeting context Chinese translation:',
+        trimContext(contextTranslation) || '(none)',
+        '',
+        'Chinese reply draft:',
+        text
+      ].join('\n'),
       text: {
         format: {
           type: 'json_schema',
@@ -66,6 +84,19 @@ function createApp(options = {}) {
       english: String(parsed.english || '').trim(),
       shortVersion: String(parsed.short_version || parsed.shortVersion || '').trim(),
       notes: String(parsed.notes || '').trim()
+    };
+  }
+
+  function buildReplySpeechPayload({
+    text,
+    voice = 'coral'
+  } = {}) {
+    return {
+      model: process.env.OPENAI_TTS_MODEL || 'gpt-4o-mini-tts',
+      voice,
+      input: String(text || '').trim(),
+      response_format: 'mp3',
+      instructions: 'Clear, calm spoken English for a live school or business meeting. Natural pace, easy for a non-native speaker to shadow.'
     };
   }
 
@@ -244,7 +275,11 @@ function createApp(options = {}) {
 
       const response = await httpClient.post(
         'https://api.openai.com/v1/responses',
-        buildReplyTranslationPayload(text),
+        buildReplyTranslationPayload({
+          text,
+          contextSource: req.body?.contextSource,
+          contextTranslation: req.body?.contextTranslation
+        }),
         {
           headers: {
             Authorization: `Bearer ${openaiApiKey}`,
@@ -257,6 +292,41 @@ function createApp(options = {}) {
       res.json(normalizeReplyOutput(response.data));
     } catch (error) {
       console.error('OpenAI reply translation错误:', error.response?.data || error.message);
+      res.status(500).json({ error: error.response?.data?.error?.message || error.message });
+    }
+  });
+
+  app.post([
+    '/api/openai/reply-speech',
+    '/api-proxy/api/openai/reply-speech'
+  ], async (req, res) => {
+    try {
+      if (!openaiApiKey) {
+        return res.status(500).json({ error: 'OpenAI API密钥未配置，无法生成英文语音' });
+      }
+
+      const text = String(req.body?.text || '').trim();
+      if (!text) {
+        return res.status(400).json({ error: '请先生成或输入英文文本' });
+      }
+
+      const response = await httpClient.post(
+        'https://api.openai.com/v1/audio/speech',
+        buildReplySpeechPayload({ text, voice: req.body?.voice }),
+        {
+          headers: {
+            Authorization: `Bearer ${openaiApiKey}`,
+            'Content-Type': 'application/json'
+          },
+          responseType: 'arraybuffer',
+          timeout: 30000
+        }
+      );
+
+      res.set('Content-Type', 'audio/mpeg');
+      res.send(Buffer.from(response.data));
+    } catch (error) {
+      console.error('OpenAI reply speech错误:', error.response?.data || error.message);
       res.status(500).json({ error: error.response?.data?.error?.message || error.message });
     }
   });

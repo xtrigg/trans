@@ -21,6 +21,7 @@ function getUpstreamUrl(requestUrl) {
   if (
     url.pathname === '/api-proxy/api/openai/realtime-translation/session'
     || url.pathname === '/api-proxy/api/openai/reply-translation'
+    || url.pathname === '/api-proxy/api/openai/reply-speech'
   ) {
     upstream.pathname = url.pathname;
     return upstream;

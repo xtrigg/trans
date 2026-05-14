@@ -7,10 +7,17 @@ import {
 } from '../functions/api/openai/reply-translation.js';
 
 test('reply translation prompt asks for speakable meeting English', () => {
-  const prompt = buildReplyTranslationPrompt('老师您好，我想确认明天的接送时间。');
+  const prompt = buildReplyTranslationPrompt({
+    text: '老师您好，我想确认明天的接送时间。',
+    contextSource: 'The pickup time is at 8:30 tomorrow morning.',
+    contextTranslation: '明天早上八点半接送。'
+  });
 
   assert.match(prompt.input, /老师您好/);
+  assert.match(prompt.input, /The pickup time/);
+  assert.match(prompt.input, /明天早上八点半/);
   assert.match(prompt.instructions, /spoken English/);
+  assert.match(prompt.instructions, /meeting context/);
   assert.match(prompt.instructions, /short_version/);
   assert.equal(prompt.text.format.type, 'json_schema');
 });
@@ -54,7 +61,11 @@ test('reply translation function calls OpenAI Responses API and normalizes outpu
       request: new Request('https://example.com/api/openai/reply-translation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: '早上好，我想确认明天接送时间。' })
+        body: JSON.stringify({
+          text: '早上好，我想确认明天接送时间。',
+          contextSource: 'We can meet at the front gate.',
+          contextTranslation: '我们可以在前门见。'
+        })
       })
     });
     const body = await response.json();
@@ -64,6 +75,8 @@ test('reply translation function calls OpenAI Responses API and normalizes outpu
     assert.equal(capturedRequest.url, 'https://api.openai.com/v1/responses');
     assert.equal(capturedRequest.init.headers.Authorization, 'Bearer test-key');
     assert.equal(forwardedPayload.model, 'gpt-5.2');
+    assert.match(forwardedPayload.input, /front gate/);
+    assert.match(forwardedPayload.input, /前门/);
     assert.equal(body.english, 'Good morning, I would like to confirm tomorrow pickup time.');
     assert.equal(body.shortVersion, 'Could we confirm tomorrow pickup time?');
     assert.equal(body.notes, 'Polite parent-teacher wording.');

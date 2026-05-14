@@ -31,6 +31,13 @@ test('router maps reply translation API to Pages Function', () => {
   );
 });
 
+test('router maps reply speech API to Pages Function', () => {
+  assert.equal(
+    getUpstreamUrl('https://xcu.ai/api-proxy/api/openai/reply-speech').toString(),
+    'https://trans-c2s.pages.dev/api-proxy/api/openai/reply-speech'
+  );
+});
+
 test('router rejects unrelated paths', () => {
   assert.equal(getUpstreamUrl('https://xcu.ai/other'), null);
 });

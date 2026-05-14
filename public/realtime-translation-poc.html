@@ -41,6 +41,9 @@
     .reply-output { min-height: 150px; padding: 12px; border: 1px solid #b7c5e7; border-radius: 8px; background: #f8fbff; white-space: pre-wrap; font-size: 1.2rem; line-height: 1.55; }
     .reply-short { margin-top: 10px; padding: 10px; border-left: 4px solid #2563eb; background: #eef4ff; line-height: 1.45; }
     .zoom-check { margin: 12px 0; padding: 10px 12px; border: 1px solid #facc15; border-radius: 8px; background: #fefce8; color: #713f12; line-height: 1.45; }
+    .option-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 10px 0; }
+    .option-row label { display: inline-flex; align-items: center; gap: 8px; }
+    .option-row input[type="checkbox"] { width: 18px; height: 18px; }
     .reply-status { min-height: 24px; color: #526071; line-height: 1.45; }
     .reply-status.error { color: #842029; }
     .reply-status.ok { color: #166534; }
@@ -103,12 +106,27 @@
         <h2 id="replyTitle">我要回复</h2>
         <p class="hint">先保持 Zoom 静音，说中文或输入中文，生成英文后再取消静音照着念。</p>
         <div class="zoom-check"><strong>Zoom 操作：</strong>回复前确认静音；念英文前按 <strong>Alt + A</strong> 取消静音；念完再按 <strong>Alt + A</strong> 静音。</div>
+        <div class="zoom-check"><strong>语音提示：</strong>播放的是 AI 生成语音。要让 Zoom 听到，需要确认你的扬声器/麦克风或虚拟音频路由不会产生回声。</div>
+        <div class="option-row">
+          <label><input id="replyUseContext" type="checkbox" checked>使用会议上下文</label>
+          <label>英文语音
+            <select id="replyVoice">
+              <option value="coral" selected>coral</option>
+              <option value="marin">marin</option>
+              <option value="cedar">cedar</option>
+              <option value="alloy">alloy</option>
+              <option value="nova">nova</option>
+            </select>
+          </label>
+        </div>
         <label for="replyChineseInput">中文回复</label>
         <textarea id="replyChineseInput" placeholder="例如：老师您好，我想确认一下明天早上的接送时间。"></textarea>
         <div class="button-row">
           <button id="replySpeakBtn" class="secondary">说中文生成英文</button>
           <button id="replyStopSpeakBtn" class="secondary" disabled>停止听我说</button>
           <button id="replyGenerateBtn" class="primary">生成英文回复</button>
+          <button id="replyPlayAudioBtn" class="secondary">播放英文语音</button>
+          <button id="replyStopAudioBtn" class="secondary" disabled>停止播放</button>
           <button id="replyCopyBtn" class="secondary">复制英文</button>
           <button id="replyClearBtn" class="secondary">清空</button>
         </div>
@@ -117,6 +135,7 @@
         <div id="replyEnglishText" class="reply-output"></div>
         <div id="replyShortText" class="reply-short">短句版会显示在这里。</div>
         <div id="replyNotes" class="metrics"></div>
+        <audio id="replyAudio" controls aria-label="AI 生成语音"></audio>
       </section>
     </div>
   </main>
@@ -135,12 +154,17 @@
     const replySpeakBtn = document.getElementById('replySpeakBtn');
     const replyStopSpeakBtn = document.getElementById('replyStopSpeakBtn');
     const replyGenerateBtn = document.getElementById('replyGenerateBtn');
+    const replyPlayAudioBtn = document.getElementById('replyPlayAudioBtn');
+    const replyStopAudioBtn = document.getElementById('replyStopAudioBtn');
     const replyCopyBtn = document.getElementById('replyCopyBtn');
     const replyClearBtn = document.getElementById('replyClearBtn');
+    const replyUseContext = document.getElementById('replyUseContext');
+    const replyVoice = document.getElementById('replyVoice');
     const replyStatus = document.getElementById('replyStatus');
     const replyEnglishText = document.getElementById('replyEnglishText');
     const replyShortText = document.getElementById('replyShortText');
     const replyNotes = document.getElementById('replyNotes');
+    const replyAudio = document.getElementById('replyAudio');
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let replyRecognition = null;
 
@@ -197,6 +221,20 @@
       replyStatus.className = `reply-status ${type}`.trim();
     }
 
+    function getRecentText(element) {
+      return element.textContent.trim().slice(-2000);
+    }
+
+    function getMeetingContext() {
+      if (!replyUseContext.checked) {
+        return {};
+      }
+      return {
+        contextSource: getRecentText(sourceText),
+        contextTranslation: getRecentText(targetText)
+      };
+    }
+
     async function generateReply() {
       const text = replyChineseInput.value.trim();
       if (!text) {
@@ -210,7 +248,7 @@
         const response = await fetch('/api-proxy/api/openai/reply-translation', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text })
+          body: JSON.stringify({ text, ...getMeetingContext() })
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) {
@@ -224,6 +262,41 @@
         setReplyStatus(error.message || String(error), 'error');
       } finally {
         replyGenerateBtn.disabled = false;
+      }
+    }
+
+    async function playReplyAudio() {
+      const text = replyEnglishText.textContent.trim();
+      if (!text) {
+        setReplyStatus('请先生成英文回复，再播放英文语音。', 'error');
+        return;
+      }
+
+      replyPlayAudioBtn.disabled = true;
+      replyStopAudioBtn.disabled = false;
+      setReplyStatus('正在生成 AI 英文语音...');
+      try {
+        const response = await fetch('/api-proxy/api/openai/reply-speech', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, voice: replyVoice.value })
+        });
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          throw new Error(error.error || `语音生成失败：${response.status}`);
+        }
+        const blob = await response.blob();
+        if (replyAudio.src) {
+          URL.revokeObjectURL(replyAudio.src);
+        }
+        replyAudio.src = URL.createObjectURL(blob);
+        await replyAudio.play();
+        setReplyStatus('AI 生成语音正在播放。要让 Zoom 听到，请先确认你已经取消静音并且不会回声。', 'ok');
+      } catch (error) {
+        replyStopAudioBtn.disabled = true;
+        setReplyStatus(error.message || String(error), 'error');
+      } finally {
+        replyPlayAudioBtn.disabled = false;
       }
     }
 
@@ -270,6 +343,16 @@
     }
 
     replyGenerateBtn.addEventListener('click', generateReply);
+    replyPlayAudioBtn.addEventListener('click', playReplyAudio);
+    replyStopAudioBtn.addEventListener('click', () => {
+      replyAudio.pause();
+      replyAudio.currentTime = 0;
+      replyStopAudioBtn.disabled = true;
+      setReplyStatus('已停止播放 AI 生成语音。');
+    });
+    replyAudio.addEventListener('ended', () => {
+      replyStopAudioBtn.disabled = true;
+    });
     replySpeakBtn.addEventListener('click', startReplyRecognition);
     replyStopSpeakBtn.addEventListener('click', () => {
       if (replyRecognition) {
@@ -290,6 +373,9 @@
       replyEnglishText.textContent = '';
       replyShortText.textContent = '短句版会显示在这里。';
       replyNotes.textContent = '';
+      replyAudio.removeAttribute('src');
+      replyAudio.load();
+      replyStopAudioBtn.disabled = true;
       setReplyStatus('已清空。回复前请确认 Zoom 仍然静音。');
     });
   </script>

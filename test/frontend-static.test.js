@@ -28,6 +28,19 @@ test('realtime meeting page exposes listening and reply work areas', () => {
   assert.match(html, /Alt \+ A/);
 });
 
+test('reply work area can use meeting context and play generated English audio', () => {
+  const html = fs.readFileSync(path.join(root, 'public', 'realtime-translation-poc.html'), 'utf8');
+
+  assert.match(html, /id="replyUseContext"/);
+  assert.match(html, /使用会议上下文/);
+  assert.match(html, /id="replyPlayAudioBtn"/);
+  assert.match(html, /播放英文语音/);
+  assert.match(html, /id="replyAudio"/);
+  assert.match(html, /AI 生成语音/);
+  assert.match(html, /contextSource/);
+  assert.match(html, /contextTranslation/);
+});
+
 test('legacy trans page exposes a visible status message target', () => {
   const html = fs.readFileSync(path.join(root, 'public', 'trans.html'), 'utf8');
 

@@ -19,18 +19,40 @@ async function readJson(request) {
   }
 }
 
-export function buildReplyTranslationPrompt(text) {
+function trimContext(value) {
+  return String(value || '').trim().slice(-2000);
+}
+
+export function buildReplyTranslationPrompt(input) {
+  const {
+    text,
+    contextSource = '',
+    contextTranslation = ''
+  } = typeof input === 'string' ? { text: input } : (input || {});
+  const sourceContext = trimContext(contextSource);
+  const translationContext = trimContext(contextTranslation);
+
   return {
     instructions: [
       'You help a Chinese-speaking parent or business user reply in spoken English during live meetings.',
       'Convert the Chinese input into natural, polite, easy-to-read spoken English.',
+      'Use the meeting context when it is provided, especially to preserve names, times, and what the other person just said.',
       'Keep the meaning faithful. Do not add facts.',
       'Return JSON with english, short_version, and notes.',
       'english should be the recommended full reply.',
       'short_version should be a shorter sentence the user can read aloud if they are nervous.',
       'notes should be brief Chinese guidance about tone or pronunciation, or an empty string.'
     ].join('\n'),
-    input: `Chinese reply draft:\n${text}`,
+    input: [
+      'Meeting context source transcript:',
+      sourceContext || '(none)',
+      '',
+      'Meeting context Chinese translation:',
+      translationContext || '(none)',
+      '',
+      'Chinese reply draft:',
+      text
+    ].join('\n'),
     text: {
       format: {
         type: 'json_schema',
@@ -98,7 +120,11 @@ export async function onRequestPost(context) {
     return jsonResponse({ error: '请先输入或说出中文回复内容' }, 400);
   }
 
-  const prompt = buildReplyTranslationPrompt(text);
+  const prompt = buildReplyTranslationPrompt({
+    text,
+    contextSource: body.contextSource,
+    contextTranslation: body.contextTranslation
+  });
   const payload = {
     model: env.OPENAI_REPLY_MODEL || 'gpt-5.2',
     max_output_tokens: 500,
