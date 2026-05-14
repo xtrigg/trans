@@ -3,7 +3,8 @@ import test from 'node:test';
 import {
   getRealtimeLanguage,
   buildSessionRequestBody,
-  collectRealtimeEventText
+  collectRealtimeEventText,
+  OpenAIRealtimeTranslator
 } from '../public/realtime-translation.mjs';
 
 test('maps display languages to OpenAI realtime language codes', () => {
@@ -27,4 +28,21 @@ test('collects source and target transcript deltas from realtime events', () => 
 
   assert.equal(state.sourceText, 'hello');
   assert.equal(state.targetText, '你好');
+});
+
+test('can mute translated output audio without stopping transcript collection', () => {
+  let paused = false;
+  const remoteAudio = {
+    muted: false,
+    pause() {
+      paused = true;
+    }
+  };
+  const translator = new OpenAIRealtimeTranslator({ remoteAudio });
+
+  translator.setOutputAudioEnabled(false);
+
+  assert.equal(translator.playTranslatedAudio, false);
+  assert.equal(remoteAudio.muted, true);
+  assert.equal(paused, true);
 });

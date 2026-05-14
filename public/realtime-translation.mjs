@@ -61,10 +61,12 @@ export class OpenAIRealtimeTranslator {
     this.localStream = null;
     this.metrics = {};
     this.transcriptState = { sourceText: '', targetText: '' };
+    this.playTranslatedAudio = true;
   }
 
   async start(options) {
     this.stop();
+    this.setOutputAudioEnabled(options?.playTranslatedAudio !== false);
     this.metrics = { startedAt: performance.now(), firstAudioAt: null, lastEventAt: null };
     this.transcriptState = { sourceText: '', targetText: '' };
     this.onStatus('正在申请麦克风权限...');
@@ -88,6 +90,10 @@ export class OpenAIRealtimeTranslator {
     this.pc.ontrack = (event) => {
       if (this.remoteAudio) {
         this.remoteAudio.srcObject = event.streams[0];
+        this.remoteAudio.muted = !this.playTranslatedAudio;
+        if (this.playTranslatedAudio && typeof this.remoteAudio.play === 'function') {
+          this.remoteAudio.play().catch(() => {});
+        }
       }
       if (!this.metrics.firstAudioAt) {
         this.metrics.firstAudioAt = performance.now();
@@ -122,6 +128,20 @@ export class OpenAIRealtimeTranslator {
       sdp: await sdpResponse.text()
     });
     this.onStatus('实时翻译已连接。正在听，请直接说话。');
+  }
+
+  setOutputAudioEnabled(enabled) {
+    this.playTranslatedAudio = Boolean(enabled);
+    if (!this.remoteAudio) return;
+
+    this.remoteAudio.muted = !this.playTranslatedAudio;
+    if (!this.playTranslatedAudio && typeof this.remoteAudio.pause === 'function') {
+      this.remoteAudio.pause();
+      return;
+    }
+    if (this.playTranslatedAudio && this.remoteAudio.srcObject && typeof this.remoteAudio.play === 'function') {
+      this.remoteAudio.play().catch(() => {});
+    }
   }
 
   async createClientSecret(options) {

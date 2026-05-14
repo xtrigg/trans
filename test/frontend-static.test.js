@@ -41,6 +41,15 @@ test('reply work area can use meeting context and play generated English audio',
   assert.match(html, /contextTranslation/);
 });
 
+test('listening work area can disable translated Chinese speech playback', () => {
+  const html = fs.readFileSync(path.join(root, 'public', 'realtime-translation-poc.html'), 'utf8');
+
+  assert.match(html, /id="listenAudioEnabled"/);
+  assert.match(html, /听中文译声/);
+  assert.match(html, /playTranslatedAudio: listenAudioEnabled\.checked/);
+  assert.match(html, /translator\.setOutputAudioEnabled\(listenAudioEnabled\.checked\)/);
+});
+
 test('legacy trans page exposes a visible status message target', () => {
   const html = fs.readFileSync(path.join(root, 'public', 'trans.html'), 'utf8');
 
