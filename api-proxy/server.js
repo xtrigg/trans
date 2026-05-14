@@ -4,21 +4,7 @@ const cors = require('cors');
 const FormData = require('form-data');
 const path = require('path');
 const { Readable } = require('stream');
-
-function buildRealtimeTranslationSessionPayload({
-  targetLanguage = 'zh'
-} = {}) {
-  const session = {
-    model: 'gpt-realtime-translate',
-    audio: {
-      output: {
-        language: targetLanguage
-      }
-    }
-  };
-
-  return { session };
-}
+const { buildRealtimeTranslationSessionPayload } = require('../lib/realtime-session-payload');
 
 function createApp(options = {}) {
   const app = express();
