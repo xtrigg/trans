@@ -7,10 +7,14 @@
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; font-family: "Microsoft YaHei", Arial, sans-serif; color: #182230; background: #f4f7fb; }
-    main { width: min(1120px, calc(100vw - 32px)); margin: 22px auto; }
+    main { width: min(1280px, calc(100vw - 32px)); margin: 22px auto; }
     h1 { font-size: 1.7rem; margin: 0 0 6px; letter-spacing: 0; }
     .subtitle { margin: 0 0 18px; color: #526071; line-height: 1.5; }
-    .toolbar { display: grid; grid-template-columns: minmax(180px, 240px) 1fr auto; gap: 12px; align-items: end; padding: 14px; border: 1px solid #d7dde8; background: #fff; border-radius: 8px; }
+    .workspace-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, 0.9fr); gap: 14px; align-items: start; }
+    .workspace { padding: 14px; border: 1px solid #d7dde8; background: #fff; border-radius: 8px; }
+    .workspace h2 { margin: 0 0 8px; font-size: 1.08rem; }
+    .workspace .hint { margin: 0 0 12px; color: #526071; line-height: 1.5; }
+    .toolbar { display: grid; grid-template-columns: minmax(160px, 220px) 1fr auto; gap: 12px; align-items: end; }
     label { display: grid; gap: 6px; font-size: 0.92rem; color: #475467; }
     select, button { min-height: 44px; border-radius: 6px; border: 1px solid #c8d0dc; background: #fff; padding: 0 12px; font-size: 1rem; }
     button { color: #fff; border-color: #2563eb; background: #2563eb; cursor: pointer; font-weight: 700; }
@@ -29,18 +33,26 @@
     .step { padding: 10px 12px; border: 1px solid #d7dde8; border-radius: 8px; background: #fff; color: #475467; }
     .step strong { display: block; color: #182230; margin-bottom: 4px; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .panel { min-height: 44vh; padding: 14px; border: 1px solid #d7dde8; border-radius: 8px; background: #fff; }
-    .panel h2 { margin: 0 0 12px; font-size: 1rem; font-weight: 700; }
-    .transcript { min-height: 34vh; white-space: pre-wrap; font-size: 1.45rem; line-height: 1.55; }
+    .text-box { min-height: 30vh; padding: 12px; border: 1px solid #d7dde8; border-radius: 8px; background: #f8fafc; }
+    .text-box h3 { margin: 0 0 10px; font-size: 0.95rem; }
+    .transcript { min-height: 24vh; white-space: pre-wrap; font-size: 1.22rem; line-height: 1.55; }
+    textarea { width: 100%; min-height: 150px; resize: vertical; border: 1px solid #c8d0dc; border-radius: 8px; padding: 12px; font: inherit; line-height: 1.45; }
+    .button-row { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
+    .reply-output { min-height: 150px; padding: 12px; border: 1px solid #b7c5e7; border-radius: 8px; background: #f8fbff; white-space: pre-wrap; font-size: 1.2rem; line-height: 1.55; }
+    .reply-short { margin-top: 10px; padding: 10px; border-left: 4px solid #2563eb; background: #eef4ff; line-height: 1.45; }
+    .zoom-check { margin: 12px 0; padding: 10px 12px; border: 1px solid #facc15; border-radius: 8px; background: #fefce8; color: #713f12; line-height: 1.45; }
+    .reply-status { min-height: 24px; color: #526071; line-height: 1.45; }
+    .reply-status.error { color: #842029; }
+    .reply-status.ok { color: #166534; }
     .metrics { margin-top: 12px; color: #667085; font-size: 0.9rem; }
     audio { width: 100%; margin-top: 12px; }
     @media (max-width: 760px) {
-      main { width: min(100vw - 20px, 1120px); margin: 12px auto; }
+      main { width: min(100vw - 20px, 1280px); margin: 12px auto; }
       h1 { font-size: 1.35rem; }
-      .toolbar { grid-template-columns: 1fr; }
+      .workspace-grid, .toolbar { grid-template-columns: 1fr; }
       .guide, .grid { grid-template-columns: 1fr; }
       .transcript { font-size: 1.18rem; min-height: 22vh; }
-      .panel { min-height: auto; }
+      .text-box { min-height: auto; }
       button.secondary { width: 100%; }
     }
   </style>
@@ -48,37 +60,63 @@
 <body>
   <main>
     <h1>实时语音翻译</h1>
-    <p class="subtitle">开会或沟通时，点“开始录音并实时翻译”，允许麦克风，然后直接说话。</p>
-    <div class="toolbar">
-      <label>翻译成
-        <select id="targetLanguage">
-          <option value="zh" selected>中文</option>
-          <option value="en">英文</option>
-          <option value="ja">日文</option>
-          <option value="ko">韩文</option>
-          <option value="es">西班牙语</option>
-          <option value="fr">法语</option>
-        </select>
-      </label>
-      <button id="startBtn" class="primary">开始录音并实时翻译</button>
-      <button id="stopBtn" class="secondary" disabled>停止录音</button>
-    </div>
-    <div id="status" class="status ready">准备就绪。点“开始录音并实时翻译”后，浏览器会请求麦克风权限。</div>
-    <div class="guide">
-      <div class="step"><strong>1. 开始</strong>点蓝色按钮，允许麦克风。</div>
-      <div class="step"><strong>2. 说话</strong>页面会实时听取现场语音。</div>
-      <div class="step"><strong>3. 收听</strong>翻译声音会从下面播放器输出。</div>
-    </div>
-    <audio id="remoteAudio" controls autoplay aria-label="翻译后的声音输出"></audio>
-    <div class="grid">
-      <section class="panel">
-        <h2>原文识别</h2>
-        <div id="sourceText" class="transcript"></div>
+    <p class="subtitle">左边听懂会议，右边准备英文回复。网页会提醒你静音，但不能直接控制 Zoom 静音。</p>
+    <div class="workspace-grid">
+      <section class="workspace" aria-labelledby="listenTitle">
+        <h2 id="listenTitle">我听别人</h2>
+        <p class="hint">把现场或电脑外放声音翻译成中文，适合听老师、客户或会议发言。</p>
+        <div class="toolbar">
+          <label>翻译成
+            <select id="targetLanguage">
+              <option value="zh" selected>中文</option>
+              <option value="en">英文</option>
+              <option value="ja">日文</option>
+              <option value="ko">韩文</option>
+              <option value="es">西班牙语</option>
+              <option value="fr">法语</option>
+            </select>
+          </label>
+          <button id="startBtn" class="primary">开始录音并实时翻译</button>
+          <button id="stopBtn" class="secondary" disabled>停止录音</button>
+        </div>
+        <div id="status" class="status ready">准备就绪。点“开始录音并实时翻译”后，浏览器会请求麦克风权限。</div>
+        <div class="guide">
+          <div class="step"><strong>1. 开始</strong>允许麦克风。</div>
+          <div class="step"><strong>2. 听会</strong>让页面听现场声音。</div>
+          <div class="step"><strong>3. 收听</strong>中文译声从播放器输出。</div>
+        </div>
+        <audio id="remoteAudio" controls autoplay aria-label="翻译后的声音输出"></audio>
+        <div class="grid">
+          <section class="text-box">
+            <h3>原文识别</h3>
+            <div id="sourceText" class="transcript"></div>
+          </section>
+          <section class="text-box">
+            <h3>中文翻译</h3>
+            <div id="targetText" class="transcript"></div>
+            <div id="metrics" class="metrics"></div>
+          </section>
+        </div>
       </section>
-      <section class="panel">
-        <h2>翻译结果</h2>
-        <div id="targetText" class="transcript"></div>
-        <div id="metrics" class="metrics"></div>
+
+      <section class="workspace" aria-labelledby="replyTitle">
+        <h2 id="replyTitle">我要回复</h2>
+        <p class="hint">先保持 Zoom 静音，说中文或输入中文，生成英文后再取消静音照着念。</p>
+        <div class="zoom-check"><strong>Zoom 操作：</strong>回复前确认静音；念英文前按 <strong>Alt + A</strong> 取消静音；念完再按 <strong>Alt + A</strong> 静音。</div>
+        <label for="replyChineseInput">中文回复</label>
+        <textarea id="replyChineseInput" placeholder="例如：老师您好，我想确认一下明天早上的接送时间。"></textarea>
+        <div class="button-row">
+          <button id="replySpeakBtn" class="secondary">说中文生成英文</button>
+          <button id="replyStopSpeakBtn" class="secondary" disabled>停止听我说</button>
+          <button id="replyGenerateBtn" class="primary">生成英文回复</button>
+          <button id="replyCopyBtn" class="secondary">复制英文</button>
+          <button id="replyClearBtn" class="secondary">清空</button>
+        </div>
+        <div id="replyStatus" class="reply-status">如果语音按钮不可用，直接在上面输入中文。</div>
+        <h3>照着念的英文</h3>
+        <div id="replyEnglishText" class="reply-output"></div>
+        <div id="replyShortText" class="reply-short">短句版会显示在这里。</div>
+        <div id="replyNotes" class="metrics"></div>
       </section>
     </div>
   </main>
@@ -93,6 +131,18 @@
     const targetText = document.getElementById('targetText');
     const metrics = document.getElementById('metrics');
     const remoteAudio = document.getElementById('remoteAudio');
+    const replyChineseInput = document.getElementById('replyChineseInput');
+    const replySpeakBtn = document.getElementById('replySpeakBtn');
+    const replyStopSpeakBtn = document.getElementById('replyStopSpeakBtn');
+    const replyGenerateBtn = document.getElementById('replyGenerateBtn');
+    const replyCopyBtn = document.getElementById('replyCopyBtn');
+    const replyClearBtn = document.getElementById('replyClearBtn');
+    const replyStatus = document.getElementById('replyStatus');
+    const replyEnglishText = document.getElementById('replyEnglishText');
+    const replyShortText = document.getElementById('replyShortText');
+    const replyNotes = document.getElementById('replyNotes');
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let replyRecognition = null;
 
     const translator = new OpenAIRealtimeTranslator({
       remoteAudio,
@@ -140,6 +190,107 @@
       statusEl.className = 'status stopped';
       startBtn.disabled = false;
       stopBtn.disabled = true;
+    });
+
+    function setReplyStatus(message, type = '') {
+      replyStatus.textContent = message;
+      replyStatus.className = `reply-status ${type}`.trim();
+    }
+
+    async function generateReply() {
+      const text = replyChineseInput.value.trim();
+      if (!text) {
+        setReplyStatus('请先说中文或输入中文回复。', 'error');
+        return;
+      }
+
+      replyGenerateBtn.disabled = true;
+      setReplyStatus('正在生成英文回复...');
+      try {
+        const response = await fetch('/api-proxy/api/openai/reply-translation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.error || `生成失败：${response.status}`);
+        }
+        replyEnglishText.textContent = data.english || '';
+        replyShortText.textContent = data.shortVersion ? `短句版：${data.shortVersion}` : '短句版会显示在这里。';
+        replyNotes.textContent = data.notes ? `提示：${data.notes}` : '';
+        setReplyStatus('英文已生成。现在确认 Zoom 静音状态，需要发言时按 Alt + A 取消静音。', 'ok');
+      } catch (error) {
+        setReplyStatus(error.message || String(error), 'error');
+      } finally {
+        replyGenerateBtn.disabled = false;
+      }
+    }
+
+    function startReplyRecognition() {
+      if (!SpeechRecognition) {
+        setReplyStatus('当前浏览器不支持中文语音识别，请直接输入中文。', 'error');
+        return;
+      }
+
+      replyRecognition = new SpeechRecognition();
+      replyRecognition.lang = 'zh-CN';
+      replyRecognition.interimResults = true;
+      replyRecognition.continuous = false;
+      let finalText = replyChineseInput.value.trim();
+
+      replyRecognition.onstart = () => {
+        replySpeakBtn.disabled = true;
+        replyStopSpeakBtn.disabled = false;
+        setReplyStatus('正在听你说中文。说完后会自动填入输入框。');
+      };
+      replyRecognition.onresult = (event) => {
+        let interimText = '';
+        for (let i = event.resultIndex; i < event.results.length; i += 1) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalText = `${finalText} ${transcript}`.trim();
+          } else {
+            interimText += transcript;
+          }
+        }
+        replyChineseInput.value = `${finalText}${interimText ? ` ${interimText}` : ''}`.trim();
+      };
+      replyRecognition.onerror = (event) => {
+        setReplyStatus(`语音识别失败：${event.error || '未知错误'}。可以改用手动输入。`, 'error');
+      };
+      replyRecognition.onend = () => {
+        replySpeakBtn.disabled = false;
+        replyStopSpeakBtn.disabled = true;
+        if (replyChineseInput.value.trim()) {
+          setReplyStatus('中文已填入。检查一下内容，然后点“生成英文回复”。', 'ok');
+        }
+      };
+      replyRecognition.start();
+    }
+
+    replyGenerateBtn.addEventListener('click', generateReply);
+    replySpeakBtn.addEventListener('click', startReplyRecognition);
+    replyStopSpeakBtn.addEventListener('click', () => {
+      if (replyRecognition) {
+        replyRecognition.stop();
+      }
+    });
+    replyCopyBtn.addEventListener('click', async () => {
+      const text = replyEnglishText.textContent.trim();
+      if (!text) {
+        setReplyStatus('还没有英文可以复制。', 'error');
+        return;
+      }
+      await navigator.clipboard.writeText(text);
+      setReplyStatus('英文已复制。需要发言时按 Alt + A 取消 Zoom 静音。', 'ok');
+    });
+    replyClearBtn.addEventListener('click', () => {
+      replyChineseInput.value = '';
+      replyEnglishText.textContent = '';
+      replyShortText.textContent = '短句版会显示在这里。';
+      replyNotes.textContent = '';
+      setReplyStatus('已清空。回复前请确认 Zoom 仍然静音。');
     });
   </script>
 </body>

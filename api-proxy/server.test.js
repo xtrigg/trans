@@ -59,6 +59,26 @@ test('api-proxy prefixed realtime translation endpoint also works for local POC'
   }
 });
 
+test('api-proxy prefixed reply translation endpoint refuses missing OpenAI key', async () => {
+  const app = proxy.createApp({ openaiApiKey: '' });
+  const server = app.listen(0);
+
+  try {
+    const port = server.address().port;
+    const resp = await fetch(`http://127.0.0.1:${port}/api-proxy/api/openai/reply-translation`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: '我想确认明天早上的会议时间。' })
+    });
+    const body = await resp.json();
+
+    assert.equal(resp.status, 500);
+    assert.match(body.error, /OpenAI API/);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
 test('serves realtime translation POC from the proxy for local development', async () => {
   const app = proxy.createApp({ openaiApiKey: '' });
   const server = app.listen(0);

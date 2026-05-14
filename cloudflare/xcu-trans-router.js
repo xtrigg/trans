@@ -18,7 +18,10 @@ function getUpstreamUrl(requestUrl) {
     return upstream;
   }
 
-  if (url.pathname === '/api-proxy/api/openai/realtime-translation/session') {
+  if (
+    url.pathname === '/api-proxy/api/openai/realtime-translation/session'
+    || url.pathname === '/api-proxy/api/openai/reply-translation'
+  ) {
     upstream.pathname = url.pathname;
     return upstream;
   }

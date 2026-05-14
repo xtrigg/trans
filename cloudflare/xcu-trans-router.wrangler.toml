@@ -4,5 +4,6 @@ compatibility_date = "2026-05-14"
 
 routes = [
   { pattern = "xcu.ai/trans*", zone_name = "xcu.ai" },
-  { pattern = "xcu.ai/api-proxy/api/openai/realtime-translation/session", zone_name = "xcu.ai" }
+  { pattern = "xcu.ai/api-proxy/api/openai/realtime-translation/session", zone_name = "xcu.ai" },
+  { pattern = "xcu.ai/api-proxy/api/openai/reply-translation", zone_name = "xcu.ai" }
 ]

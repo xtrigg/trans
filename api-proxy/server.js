@@ -15,6 +15,60 @@ function createApp(options = {}) {
   const azureSpeechRegion = options.azureSpeechRegion ?? process.env.AZURE_SPEECH_REGION ?? 'westus';
   const httpClient = options.httpClient ?? axios;
 
+  function buildReplyTranslationPayload(text) {
+    return {
+      model: process.env.OPENAI_REPLY_MODEL || 'gpt-5.2',
+      max_output_tokens: 500,
+      instructions: [
+        'You help a Chinese-speaking parent or business user reply in spoken English during live meetings.',
+        'Convert the Chinese input into natural, polite, easy-to-read spoken English.',
+        'Keep the meaning faithful. Do not add facts.',
+        'Return JSON with english, short_version, and notes.',
+        'english should be the recommended full reply.',
+        'short_version should be a shorter sentence the user can read aloud if they are nervous.',
+        'notes should be brief Chinese guidance about tone or pronunciation, or an empty string.'
+      ].join('\n'),
+      input: `Chinese reply draft:\n${text}`,
+      text: {
+        format: {
+          type: 'json_schema',
+          name: 'meeting_reply_translation',
+          strict: true,
+          schema: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+              english: { type: 'string' },
+              short_version: { type: 'string' },
+              notes: { type: 'string' }
+            },
+            required: ['english', 'short_version', 'notes']
+          }
+        }
+      }
+    };
+  }
+
+  function normalizeReplyOutput(data) {
+    const raw = data?.output_text
+      || data?.output?.flatMap((item) => item?.content || [])
+        .map((content) => content?.text || '')
+        .join('')
+      || '';
+    let parsed = {};
+    try {
+      parsed = raw ? JSON.parse(raw) : {};
+    } catch {
+      parsed = { english: raw, short_version: '', notes: '' };
+    }
+
+    return {
+      english: String(parsed.english || '').trim(),
+      shortVersion: String(parsed.short_version || parsed.shortVersion || '').trim(),
+      notes: String(parsed.notes || '').trim()
+    };
+  }
+
   app.use(express.json({ limit: '50mb' }));
   app.use(cors());
   app.use(express.static(path.join(__dirname, '..', 'public')));
@@ -170,6 +224,39 @@ function createApp(options = {}) {
       res.json(response.data);
     } catch (error) {
       console.error('OpenAI Realtime Translation session错误:', error.response?.data || error.message);
+      res.status(500).json({ error: error.response?.data?.error?.message || error.message });
+    }
+  });
+
+  app.post([
+    '/api/openai/reply-translation',
+    '/api-proxy/api/openai/reply-translation'
+  ], async (req, res) => {
+    try {
+      if (!openaiApiKey) {
+        return res.status(500).json({ error: 'OpenAI API密钥未配置，无法生成英文回复' });
+      }
+
+      const text = String(req.body?.text || '').trim();
+      if (!text) {
+        return res.status(400).json({ error: '请先输入或说出中文回复内容' });
+      }
+
+      const response = await httpClient.post(
+        'https://api.openai.com/v1/responses',
+        buildReplyTranslationPayload(text),
+        {
+          headers: {
+            Authorization: `Bearer ${openaiApiKey}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 30000
+        }
+      );
+
+      res.json(normalizeReplyOutput(response.data));
+    } catch (error) {
+      console.error('OpenAI reply translation错误:', error.response?.data || error.message);
       res.status(500).json({ error: error.response?.data?.error?.message || error.message });
     }
   });

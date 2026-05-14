@@ -17,6 +17,17 @@ test('realtime translation POC page and module exist', () => {
   assert.equal(fs.existsSync(path.join(root, 'public', 'realtime-translation.mjs')), true);
 });
 
+test('realtime meeting page exposes listening and reply work areas', () => {
+  const html = fs.readFileSync(path.join(root, 'public', 'realtime-translation-poc.html'), 'utf8');
+
+  assert.match(html, /我听别人/);
+  assert.match(html, /我要回复/);
+  assert.match(html, /id="replyChineseInput"/);
+  assert.match(html, /id="replyEnglishText"/);
+  assert.match(html, /说中文生成英文/);
+  assert.match(html, /Alt \+ A/);
+});
+
 test('legacy trans page exposes a visible status message target', () => {
   const html = fs.readFileSync(path.join(root, 'public', 'trans.html'), 'utf8');
 
