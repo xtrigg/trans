@@ -6,145 +6,192 @@
   <title>实时语音翻译</title>
   <style>
     * { box-sizing: border-box; }
-    body { margin: 0; font-family: "Microsoft YaHei", Arial, sans-serif; color: #182230; background: #f4f7fb; }
-    main { width: min(1280px, calc(100vw - 32px)); margin: 22px auto; }
-    h1 { font-size: 1.7rem; margin: 0 0 6px; letter-spacing: 0; }
-    .subtitle { margin: 0 0 18px; color: #526071; line-height: 1.5; }
-    .workspace-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, 0.9fr); gap: 14px; align-items: start; }
-    .workspace { padding: 14px; border: 1px solid #d7dde8; background: #fff; border-radius: 8px; }
-    .workspace h2 { margin: 0 0 8px; font-size: 1.08rem; }
-    .workspace .hint { margin: 0 0 12px; color: #526071; line-height: 1.5; }
-    .toolbar { display: grid; grid-template-columns: minmax(160px, 220px) 1fr auto; gap: 12px; align-items: end; }
-    label { display: grid; gap: 6px; font-size: 0.92rem; color: #475467; }
-    select, button { min-height: 44px; border-radius: 6px; border: 1px solid #c8d0dc; background: #fff; padding: 0 12px; font-size: 1rem; }
-    button { color: #fff; border-color: #2563eb; background: #2563eb; cursor: pointer; font-weight: 700; }
-    button.primary { min-height: 56px; font-size: 1.12rem; }
-    button.secondary { color: #1f2937; border-color: #c8d0dc; background: #fff; min-width: 108px; }
+    body { margin: 0; font-family: "Microsoft YaHei", Arial, sans-serif; color: #182230; background: #eef3f8; }
+    main { width: min(1440px, calc(100vw - 24px)); margin: 12px auto 28px; }
+    h1 { font-size: 1.45rem; margin: 0; letter-spacing: 0; }
+    button, select, textarea { font: inherit; }
+    button { min-height: 42px; border-radius: 6px; border: 1px solid #2563eb; background: #2563eb; color: #fff; padding: 0 12px; cursor: pointer; font-weight: 700; }
+    button.secondary { color: #1f2937; border-color: #c8d0dc; background: #fff; }
+    button.danger { border-color: #dc2626; background: #dc2626; }
     button:disabled { opacity: 0.55; cursor: not-allowed; }
-    .status { display: flex; align-items: center; gap: 10px; min-height: 58px; margin: 12px 0; padding: 12px 14px; border: 1px solid #d7dde8; border-radius: 8px; background: #fff; color: #344054; line-height: 1.45; }
-    .status::before { content: ""; width: 12px; height: 12px; border-radius: 50%; background: #98a2b3; flex: 0 0 auto; }
-    .status.ready::before { background: #2563eb; }
-    .status.connecting::before { background: #f59e0b; }
-    .status.active::before { background: #16a34a; box-shadow: 0 0 0 5px rgba(22, 163, 74, 0.12); }
-    .status.stopped::before { background: #667085; }
-    .status.error { color: #842029; background: #f8d7da; border-color: #f5c2c7; }
-    .status.error::before { background: #dc2626; }
-    .guide { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 12px 0; }
-    .step { padding: 10px 12px; border: 1px solid #d7dde8; border-radius: 8px; background: #fff; color: #475467; }
-    .step strong { display: block; color: #182230; margin-bottom: 4px; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .text-box { min-height: 30vh; padding: 12px; border: 1px solid #d7dde8; border-radius: 8px; background: #f8fafc; }
-    .text-box h3 { margin: 0 0 10px; font-size: 0.95rem; }
-    .transcript { min-height: 24vh; white-space: pre-wrap; font-size: 1.22rem; line-height: 1.55; }
-    textarea { width: 100%; min-height: 150px; resize: vertical; border: 1px solid #c8d0dc; border-radius: 8px; padding: 12px; font: inherit; line-height: 1.45; }
+    select { min-height: 40px; border: 1px solid #c8d0dc; border-radius: 6px; background: #fff; padding: 0 10px; }
+    label { color: #475467; font-size: 0.94rem; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+    .session-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #d7dde8; border-radius: 8px; background: #fff; }
+    .status { flex: 1 1 360px; color: #344054; line-height: 1.45; }
+    .timer { font-weight: 800; color: #166534; }
+    .timer.warning { color: #b45309; }
+    .reading-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+    .translation-panel { border: 1px solid #d7dde8; border-radius: 8px; background: #fff; overflow: hidden; }
+    .translation-panel header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-bottom: 1px solid #e4e7ec; background: #f8fafc; }
+    .translation-panel h2, .translation-panel h3 { margin: 0; font-size: 1rem; }
+    .primary-reading .transcript { min-height: calc(100vh - 190px); padding: 18px 20px; font-size: 1.34rem; line-height: 1.72; white-space: pre-wrap; overflow-y: auto; }
+    .source-panel[hidden] { display: none; }
+    .source-panel .transcript { max-height: 30vh; padding: 14px 16px; font-size: 1.02rem; line-height: 1.55; white-space: pre-wrap; overflow-y: auto; color: #344054; }
+    .metrics { color: #667085; font-size: 0.9rem; }
+    .floating-controls { position: fixed; right: 18px; top: 78px; z-index: 20; border-radius: 999px; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18); }
+    .drawer { position: fixed; top: 0; right: 0; z-index: 30; width: min(420px, 100vw); height: 100vh; padding: 16px; background: #fff; border-left: 1px solid #d7dde8; box-shadow: -18px 0 40px rgba(15, 23, 42, 0.18); overflow-y: auto; transform: translateX(100%); transition: transform 160ms ease; }
+    .drawer.open { transform: translateX(0); }
+    .drawer-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .drawer-section { border-top: 1px solid #e4e7ec; padding: 14px 0; }
+    .drawer-section:first-of-type { border-top: 0; }
+    .option-list { display: grid; gap: 10px; margin-top: 10px; }
+    .option-list label, .inline-options label { display: flex; align-items: center; gap: 8px; }
+    .inline-options { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
+    input[type="radio"], input[type="checkbox"] { width: 18px; height: 18px; }
     .button-row { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
-    .reply-output { min-height: 150px; padding: 12px; border: 1px solid #b7c5e7; border-radius: 8px; background: #f8fbff; white-space: pre-wrap; font-size: 1.2rem; line-height: 1.55; }
+    textarea { width: 100%; min-height: 120px; resize: vertical; border: 1px solid #c8d0dc; border-radius: 8px; padding: 10px; line-height: 1.45; }
+    .reply-output { min-height: 120px; padding: 12px; border: 1px solid #b7c5e7; border-radius: 8px; background: #f8fbff; white-space: pre-wrap; font-size: 1.08rem; line-height: 1.55; }
     .reply-short { margin-top: 10px; padding: 10px; border-left: 4px solid #2563eb; background: #eef4ff; line-height: 1.45; }
-    .zoom-check { margin: 12px 0; padding: 10px 12px; border: 1px solid #facc15; border-radius: 8px; background: #fefce8; color: #713f12; line-height: 1.45; }
-    .option-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 10px 0; }
-    .option-row label { display: inline-flex; align-items: center; gap: 8px; }
-    .option-row input[type="checkbox"] { width: 18px; height: 18px; }
-    .listen-options { margin-top: 10px; }
     .reply-status { min-height: 24px; color: #526071; line-height: 1.45; }
     .reply-status.error { color: #842029; }
     .reply-status.ok { color: #166534; }
-    .metrics { margin-top: 12px; color: #667085; font-size: 0.9rem; }
-    audio { width: 100%; margin-top: 12px; }
+    .zoom-check { margin: 10px 0; padding: 10px 12px; border: 1px solid #facc15; border-radius: 8px; background: #fefce8; color: #713f12; line-height: 1.45; }
+    audio { width: 100%; margin-top: 10px; }
+    .timeout-overlay { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 20px; background: rgba(15, 23, 42, 0.72); color: #fff; }
+    .timeout-overlay[hidden] { display: none; }
+    .timeout-card { width: min(620px, 100%); padding: 28px; border-radius: 8px; background: #111827; text-align: center; box-shadow: 0 24px 60px rgba(0,0,0,0.35); }
+    .timeout-card h2 { margin: 0 0 12px; font-size: clamp(2rem, 8vw, 4.8rem); }
+    .timeout-card p { margin: 0 0 18px; font-size: 1.18rem; line-height: 1.5; }
     @media (max-width: 760px) {
-      main { width: min(100vw - 20px, 1280px); margin: 12px auto; }
-      h1 { font-size: 1.35rem; }
-      .workspace-grid, .toolbar { grid-template-columns: 1fr; }
-      .guide, .grid { grid-template-columns: 1fr; }
-      .transcript { font-size: 1.18rem; min-height: 22vh; }
-      .text-box { min-height: auto; }
-      button.secondary { width: 100%; }
+      main { width: min(100vw - 16px, 1440px); }
+      .topbar { align-items: flex-start; }
+      .primary-reading .transcript { min-height: calc(100vh - 220px); font-size: 1.22rem; padding: 14px; }
+      .floating-controls { right: 12px; top: auto; bottom: 18px; }
     }
   </style>
 </head>
 <body>
   <main>
-    <h1>实时语音翻译</h1>
-    <p class="subtitle">左边听懂会议，右边准备英文回复。网页会提醒你静音，但不能直接控制 Zoom 静音。</p>
-    <div class="workspace-grid">
-      <section class="workspace" aria-labelledby="listenTitle">
-        <h2 id="listenTitle">我听别人</h2>
-        <p class="hint">把现场或电脑外放声音翻译成中文，适合听老师、客户或会议发言。</p>
-        <div class="toolbar">
-          <label>翻译成
-            <select id="targetLanguage">
-              <option value="zh" selected>中文</option>
-              <option value="en">英文</option>
-              <option value="ja">日文</option>
-              <option value="ko">韩文</option>
-              <option value="es">西班牙语</option>
-              <option value="fr">法语</option>
-            </select>
-          </label>
-          <button id="startBtn" class="primary">开始录音并实时翻译</button>
-          <button id="stopBtn" class="secondary" disabled>停止录音</button>
-        </div>
-        <div id="status" class="status ready">准备就绪。点“开始录音并实时翻译”后，浏览器会请求麦克风权限。</div>
-        <div class="guide">
-          <div class="step"><strong>1. 开始</strong>允许麦克风。</div>
-          <div class="step"><strong>2. 听会</strong>让页面听现场声音。</div>
-          <div class="step"><strong>3. 收听</strong>需要时打开中文译声。</div>
-        </div>
-        <div class="option-row listen-options">
-          <label><input id="listenAudioEnabled" type="checkbox" checked>听中文译声</label>
-        </div>
-        <audio id="remoteAudio" controls autoplay aria-label="翻译后的声音输出"></audio>
-        <div class="grid">
-          <section class="text-box">
-            <h3>原文识别</h3>
-            <div id="sourceText" class="transcript"></div>
-          </section>
-          <section class="text-box">
-            <h3>中文翻译</h3>
-            <div id="targetText" class="transcript"></div>
-            <div id="metrics" class="metrics"></div>
-          </section>
-        </div>
+    <div class="topbar">
+      <div>
+        <h1>实时语音翻译</h1>
+        <div class="metrics">我听别人：默认省钱文字模式。需要中文译声时，可在控制面板切换到实时译声模式。</div>
+      </div>
+      <button id="toggleControlsBtn" class="floating-controls" aria-controls="controlDrawer" aria-expanded="false">控制</button>
+    </div>
+
+    <div class="session-strip">
+      <button id="startBtn" class="primary">开始录音并实时翻译</button>
+      <button id="stopBtn" class="secondary" disabled>停止录音</button>
+      <div id="sessionCountdown" class="timer">最长 60:00</div>
+      <div id="status" class="status">准备就绪。省钱文字模式只生成文字，不生成中文译声。</div>
+    </div>
+
+    <section id="readingLayout" class="reading-layout" aria-label="会议翻译阅读区">
+      <section class="translation-panel primary-reading" aria-labelledby="targetHeading">
+        <header>
+          <h2 id="targetHeading">中文翻译</h2>
+          <div id="metrics" class="metrics">翻译内容会按段追加到这里。</div>
+        </header>
+        <div id="targetText" class="transcript"></div>
       </section>
 
-      <section class="workspace" aria-labelledby="replyTitle">
-        <h2 id="replyTitle">我要回复</h2>
-        <p class="hint">先保持 Zoom 静音，说中文或输入中文，生成英文后再取消静音照着念。</p>
-        <div class="zoom-check"><strong>Zoom 操作：</strong>回复前确认静音；念英文前按 <strong>Alt + A</strong> 取消静音；念完再按 <strong>Alt + A</strong> 静音。</div>
-        <div class="zoom-check"><strong>语音提示：</strong>播放的是 AI 生成语音。要让 Zoom 听到，需要确认你的扬声器/麦克风或虚拟音频路由不会产生回声。</div>
-        <div class="option-row">
-          <label><input id="replyUseContext" type="checkbox" checked>使用会议上下文</label>
-          <label>英文语音
-            <select id="replyVoice">
-              <option value="coral" selected>coral</option>
-              <option value="marin">marin</option>
-              <option value="cedar">cedar</option>
-              <option value="alloy">alloy</option>
-              <option value="nova">nova</option>
-            </select>
-          </label>
-        </div>
-        <label for="replyChineseInput">中文回复</label>
-        <textarea id="replyChineseInput" placeholder="例如：老师您好，我想确认一下明天早上的接送时间。"></textarea>
-        <div class="button-row">
-          <button id="replySpeakBtn" class="secondary">说中文生成英文</button>
-          <button id="replyStopSpeakBtn" class="secondary" disabled>停止听我说</button>
-          <button id="replyGenerateBtn" class="primary">生成英文回复</button>
-          <button id="replyPlayAudioBtn" class="secondary">播放英文语音</button>
-          <button id="replyStopAudioBtn" class="secondary" disabled>停止播放</button>
-          <button id="replyCopyBtn" class="secondary">复制英文</button>
-          <button id="replyClearBtn" class="secondary">清空</button>
-        </div>
-        <div id="replyStatus" class="reply-status">如果语音按钮不可用，直接在上面输入中文。</div>
-        <h3>照着念的英文</h3>
-        <div id="replyEnglishText" class="reply-output"></div>
-        <div id="replyShortText" class="reply-short">短句版会显示在这里。</div>
-        <div id="replyNotes" class="metrics"></div>
-        <audio id="replyAudio" controls aria-label="AI 生成语音"></audio>
+      <section id="sourcePanel" class="translation-panel source-panel" hidden aria-labelledby="sourceHeading">
+        <header>
+          <h3 id="sourceHeading">英文原文</h3>
+          <div class="metrics">省钱文字模式会显示转写原文；实时译声模式可能没有稳定原文。</div>
+        </header>
+        <div id="sourceText" class="transcript"></div>
       </section>
-    </div>
+    </section>
   </main>
+
+  <aside id="controlDrawer" class="drawer" aria-label="翻译控制面板">
+    <div class="drawer-header">
+      <h2>控制面板</h2>
+      <button id="closeControlsBtn" class="secondary">收起</button>
+    </div>
+
+    <section class="drawer-section">
+      <h3>翻译模式</h3>
+      <div class="option-list">
+        <label><input id="modeText" name="translationMode" type="radio" value="text" checked>省钱文字模式</label>
+        <label><input id="modeRealtime" name="translationMode" type="radio" value="realtime">实时译声模式</label>
+      </div>
+      <div class="inline-options">
+        <label>翻译成
+          <select id="targetLanguage">
+            <option value="zh" selected>中文</option>
+            <option value="en">英文</option>
+            <option value="ja">日文</option>
+            <option value="ko">韩文</option>
+            <option value="es">西班牙语</option>
+            <option value="fr">法语</option>
+          </select>
+        </label>
+      </div>
+      <div class="inline-options">
+        <label><input id="showSourceText" type="checkbox">显示英文原文</label>
+        <label><input id="listenAudioEnabled" type="checkbox">听中文译声</label>
+      </div>
+      <audio id="remoteAudio" controls autoplay aria-label="翻译后的声音输出"></audio>
+    </section>
+
+    <section class="drawer-section">
+      <h3>会话保护</h3>
+      <p class="metrics">默认 60 分钟自动停止。剩 5 分钟、3 分钟、1 分钟会出现大提醒；不点击延长就会停。</p>
+      <div class="button-row">
+        <button id="extendSessionBtn" class="secondary">延长 15 分钟</button>
+      </div>
+      <p class="metrics">PTT：按 <strong>Space</strong> 切换开始/停止。蓝牙遥控器如能映射为空格，也可使用。</p>
+    </section>
+
+    <section class="drawer-section" aria-labelledby="replyTitle">
+      <h3 id="replyTitle">我要回复</h3>
+      <p class="metrics">先保持 Zoom 静音，说中文或输入中文，生成英文后再取消静音照着念。</p>
+      <div class="zoom-check"><strong>Zoom 操作：</strong>回复前确认静音；念英文前按 <strong>Alt + A</strong> 取消静音；念完再按 <strong>Alt + A</strong> 静音。</div>
+      <div class="zoom-check"><strong>语音提示：</strong>播放的是 AI 生成语音。要让 Zoom 听到，需要确认你的扬声器/麦克风或虚拟音频路由不会产生回声。</div>
+      <div class="inline-options">
+        <label><input id="replyUseContext" type="checkbox" checked>使用会议上下文</label>
+        <label>英文语音
+          <select id="replyVoice">
+            <option value="coral" selected>coral</option>
+            <option value="marin">marin</option>
+            <option value="cedar">cedar</option>
+            <option value="alloy">alloy</option>
+            <option value="nova">nova</option>
+          </select>
+        </label>
+      </div>
+      <label for="replyChineseInput">中文回复</label>
+      <textarea id="replyChineseInput" placeholder="例如：老师您好，我想确认一下明天早上的接送时间。"></textarea>
+      <div class="button-row">
+        <button id="replySpeakBtn" class="secondary">说中文生成英文</button>
+        <button id="replyStopSpeakBtn" class="secondary" disabled>停止听我说</button>
+        <button id="replyGenerateBtn">生成英文回复</button>
+        <button id="replyPlayAudioBtn" class="secondary">播放英文语音</button>
+        <button id="replyStopAudioBtn" class="secondary" disabled>停止播放</button>
+        <button id="replyCopyBtn" class="secondary">复制英文</button>
+        <button id="replyClearBtn" class="secondary">清空</button>
+      </div>
+      <div id="replyStatus" class="reply-status">如果语音按钮不可用，直接在上面输入中文。</div>
+      <h3>照着念的英文</h3>
+      <div id="replyEnglishText" class="reply-output"></div>
+      <div id="replyShortText" class="reply-short">短句版会显示在这里。</div>
+      <div id="replyNotes" class="metrics"></div>
+      <audio id="replyAudio" controls aria-label="AI 生成语音"></audio>
+    </section>
+  </aside>
+
+  <div id="timeoutOverlay" class="timeout-overlay" hidden>
+    <div class="timeout-card">
+      <h2 id="timeoutTitle">即将停止</h2>
+      <p id="timeoutMessage">本次翻译快到 60 分钟上限。没有操作会自动停止，避免继续消耗费用。</p>
+      <div class="button-row" style="justify-content: center;">
+        <button id="overlayExtendBtn">延长 15 分钟</button>
+        <button id="overlayStopBtn" class="danger">现在停止</button>
+      </div>
+    </div>
+  </div>
+
   <script type="module">
     import { OpenAIRealtimeTranslator } from './realtime-translation.mjs';
+    import { EconomicalTextTranslator, appendSegmentText } from './text-translation.mjs';
+
+    const DEFAULT_SESSION_LIMIT_MS = 60 * 60 * 1000;
+    const EXTEND_SESSION_MS = 15 * 60 * 1000;
+    const WARNING_MARKS_MS = [5 * 60 * 1000, 3 * 60 * 1000, 60 * 1000];
 
     const targetLanguage = document.getElementById('targetLanguage');
     const startBtn = document.getElementById('startBtn');
@@ -153,8 +200,22 @@
     const sourceText = document.getElementById('sourceText');
     const targetText = document.getElementById('targetText');
     const metrics = document.getElementById('metrics');
+    const sessionCountdown = document.getElementById('sessionCountdown');
+    const modeText = document.getElementById('modeText');
+    const modeRealtime = document.getElementById('modeRealtime');
+    const showSourceText = document.getElementById('showSourceText');
+    const sourcePanel = document.getElementById('sourcePanel');
     const listenAudioEnabled = document.getElementById('listenAudioEnabled');
     const remoteAudio = document.getElementById('remoteAudio');
+    const toggleControlsBtn = document.getElementById('toggleControlsBtn');
+    const closeControlsBtn = document.getElementById('closeControlsBtn');
+    const controlDrawer = document.getElementById('controlDrawer');
+    const timeoutOverlay = document.getElementById('timeoutOverlay');
+    const timeoutTitle = document.getElementById('timeoutTitle');
+    const timeoutMessage = document.getElementById('timeoutMessage');
+    const extendSessionBtn = document.getElementById('extendSessionBtn');
+    const overlayExtendBtn = document.getElementById('overlayExtendBtn');
+    const overlayStopBtn = document.getElementById('overlayStopBtn');
     const replyChineseInput = document.getElementById('replyChineseInput');
     const replySpeakBtn = document.getElementById('replySpeakBtn');
     const replyStopSpeakBtn = document.getElementById('replyStopSpeakBtn');
@@ -171,65 +232,177 @@
     const replyNotes = document.getElementById('replyNotes');
     const replyAudio = document.getElementById('replyAudio');
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let replyRecognition = null;
 
-    const translator = new OpenAIRealtimeTranslator({
+    let replyRecognition = null;
+    let activeMode = 'text';
+    let transcriptState = { sourceText: '', targetText: '' };
+    let sessionEndsAt = null;
+    let countdownTimer = null;
+    let warnedMarks = new Set();
+
+    const realtimeTranslator = new OpenAIRealtimeTranslator({
       remoteAudio,
       onStatus(message) {
-        statusEl.textContent = message;
-        const isActive = message.includes('已连接') || message.includes('已收到译声');
-        const isConnecting = message.includes('正在') || message.includes('申请');
-        statusEl.className = `status ${isActive ? 'active' : isConnecting ? 'connecting' : 'ready'}`;
+        setStatus(message);
       },
       onError(error) {
-        statusEl.textContent = error.message || String(error);
-        statusEl.className = 'status error';
+        setStatus(error.message || String(error), true);
       },
       onTranscript(update) {
         sourceText.textContent = update.sourceText;
         targetText.textContent = update.targetText;
+        transcriptState = {
+          sourceText: update.sourceText,
+          targetText: update.targetText
+        };
         if (update.metrics.firstAudioAt) {
           metrics.textContent = `首次译声延迟：${Math.round(update.metrics.firstAudioAt - update.metrics.startedAt)}ms`;
         }
       }
     });
+    const translator = realtimeTranslator;
 
-    startBtn.addEventListener('click', async () => {
+    const textTranslator = new EconomicalTextTranslator({
+      onStatus(message) {
+        setStatus(message);
+      },
+      onSegment(segment) {
+        appendSegmentText(transcriptState, segment);
+        sourceText.textContent = transcriptState.sourceText;
+        targetText.textContent = transcriptState.targetText;
+        metrics.textContent = segment.summary || '省钱文字模式：已追加一段翻译。';
+        targetText.scrollTop = targetText.scrollHeight;
+      },
+      onError(error) {
+        setStatus(error.message || String(error), true);
+      }
+    });
+
+    function setStatus(message, isError = false) {
+      statusEl.textContent = message;
+      statusEl.style.color = isError ? '#842029' : '#344054';
+    }
+
+    function getSelectedMode() {
+      return modeRealtime.checked ? 'realtime' : 'text';
+    }
+
+    function syncModeControls() {
+      activeMode = getSelectedMode();
+      listenAudioEnabled.disabled = activeMode !== 'realtime';
+      remoteAudio.hidden = activeMode !== 'realtime';
+      if (activeMode === 'text') {
+        listenAudioEnabled.checked = false;
+      }
+      setStatus(activeMode === 'text'
+        ? '省钱文字模式已选择：只生成文字，不生成中文译声。'
+        : '实时译声模式已选择：会生成中文译声，成本高于文字模式。');
+    }
+
+    function setDrawerOpen(open) {
+      controlDrawer.classList.toggle('open', open);
+      toggleControlsBtn.setAttribute('aria-expanded', String(open));
+    }
+
+    function formatTime(ms) {
+      const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+      const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+      const seconds = String(totalSeconds % 60).padStart(2, '0');
+      return `${minutes}:${seconds}`;
+    }
+
+    function startSessionGuard() {
+      sessionEndsAt = Date.now() + DEFAULT_SESSION_LIMIT_MS;
+      warnedMarks = new Set();
+      timeoutOverlay.hidden = true;
+      clearInterval(countdownTimer);
+      countdownTimer = setInterval(updateSessionCountdown, 1000);
+      updateSessionCountdown();
+    }
+
+    function updateSessionCountdown() {
+      if (!sessionEndsAt) return;
+      const remaining = sessionEndsAt - Date.now();
+      sessionCountdown.textContent = `剩余 ${formatTime(remaining)}`;
+      sessionCountdown.classList.toggle('warning', remaining <= 5 * 60 * 1000);
+      for (const mark of WARNING_MARKS_MS) {
+        if (remaining <= mark && !warnedMarks.has(mark)) {
+          warnedMarks.add(mark);
+          showTimeoutWarning(remaining);
+        }
+      }
+      if (remaining <= 0) {
+        stopCapture('已到 60 分钟上限，已自动停止，避免继续消耗费用。');
+      }
+    }
+
+    function showTimeoutWarning(remaining) {
+      timeoutTitle.textContent = `剩余 ${formatTime(remaining)}`;
+      timeoutMessage.textContent = '本次翻译快到 60 分钟上限。没有操作会自动停止，避免继续消耗费用。';
+      timeoutOverlay.hidden = false;
+    }
+
+    function extendSession() {
+      if (!sessionEndsAt) return;
+      sessionEndsAt += EXTEND_SESSION_MS;
+      timeoutOverlay.hidden = true;
+      setStatus('已延长 15 分钟。');
+      updateSessionCountdown();
+    }
+
+    function stopSessionGuard() {
+      clearInterval(countdownTimer);
+      countdownTimer = null;
+      sessionEndsAt = null;
+      timeoutOverlay.hidden = true;
+      sessionCountdown.textContent = '最长 60:00';
+      sessionCountdown.classList.remove('warning');
+    }
+
+    async function startCapture() {
+      transcriptState = { sourceText: '', targetText: '' };
       sourceText.textContent = '';
       targetText.textContent = '';
       metrics.textContent = '';
       startBtn.disabled = true;
       stopBtn.disabled = false;
+      syncModeControls();
       try {
-        await translator.start({
-          targetLanguage: targetLanguage.value,
-          playTranslatedAudio: listenAudioEnabled.checked
-        });
+        startSessionGuard();
+        if (activeMode === 'realtime') {
+          await realtimeTranslator.start({
+            targetLanguage: targetLanguage.value,
+            playTranslatedAudio: listenAudioEnabled.checked
+          });
+        } else {
+          await textTranslator.start({
+            targetLanguage: targetLanguage.value
+          });
+        }
       } catch (error) {
-        translator.stop();
-        statusEl.textContent = error.message || String(error);
-        statusEl.className = 'status error';
-        startBtn.disabled = false;
-        stopBtn.disabled = true;
+        stopCapture(error.message || String(error), true);
       }
-    });
+    }
 
-    stopBtn.addEventListener('click', () => {
-      translator.stop();
-      statusEl.textContent = '已停止录音。需要继续时，再点“开始录音并实时翻译”。';
-      statusEl.className = 'status stopped';
+    function stopCapture(message = '已停止录音。需要继续时，再点“开始录音并实时翻译”。', isError = false) {
+      textTranslator.stop();
+      realtimeTranslator.stop();
+      stopSessionGuard();
       startBtn.disabled = false;
       stopBtn.disabled = true;
-    });
+      setStatus(message, isError);
+    }
 
-    listenAudioEnabled.addEventListener('change', () => {
-      translator.setOutputAudioEnabled(listenAudioEnabled.checked);
-      if (listenAudioEnabled.checked) {
-        statusEl.textContent = '中文译声已打开。';
+    function toggleCaptureByPtt(event) {
+      if (event.target?.matches?.('input, textarea, select, button')) return;
+      if (event.code !== 'Space') return;
+      event.preventDefault();
+      if (stopBtn.disabled) {
+        startCapture();
       } else {
-        statusEl.textContent = '中文译声已关闭，只保留屏幕上的中文翻译。';
+        stopCapture('PTT 已停止录音。');
       }
-    });
+    }
 
     function setReplyStatus(message, type = '') {
       replyStatus.textContent = message;
@@ -357,6 +530,28 @@
       replyRecognition.start();
     }
 
+    startBtn.addEventListener('click', startCapture);
+    stopBtn.addEventListener('click', () => stopCapture());
+    modeText.addEventListener('change', syncModeControls);
+    modeRealtime.addEventListener('change', syncModeControls);
+    showSourceText.addEventListener('change', () => {
+      sourcePanel.hidden = !showSourceText.checked;
+    });
+    listenAudioEnabled.addEventListener('change', () => {
+      translator.setOutputAudioEnabled(listenAudioEnabled.checked);
+      if (listenAudioEnabled.checked) {
+        statusEl.textContent = '中文译声已打开。';
+      } else {
+        statusEl.textContent = '中文译声已关闭，只保留屏幕上的中文翻译。';
+      }
+    });
+    toggleControlsBtn.addEventListener('click', () => setDrawerOpen(!controlDrawer.classList.contains('open')));
+    closeControlsBtn.addEventListener('click', () => setDrawerOpen(false));
+    extendSessionBtn.addEventListener('click', extendSession);
+    overlayExtendBtn.addEventListener('click', extendSession);
+    overlayStopBtn.addEventListener('click', () => stopCapture('已手动停止，避免继续消耗费用。'));
+    document.addEventListener('keydown', toggleCaptureByPtt);
+
     replyGenerateBtn.addEventListener('click', generateReply);
     replyPlayAudioBtn.addEventListener('click', playReplyAudio);
     replyStopAudioBtn.addEventListener('click', () => {
@@ -393,6 +588,8 @@
       replyStopAudioBtn.disabled = true;
       setReplyStatus('已清空。回复前请确认 Zoom 仍然静音。');
     });
+
+    syncModeControls();
   </script>
 </body>
 </html>

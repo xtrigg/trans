@@ -100,6 +100,65 @@ function createApp(options = {}) {
     };
   }
 
+  function buildTextTranslationPayload({
+    transcript,
+    targetLanguage = 'zh'
+  } = {}) {
+    return {
+      model: process.env.OPENAI_TEXT_TRANSLATION_MODEL || 'gpt-5.2',
+      max_output_tokens: 600,
+      instructions: [
+        'You are a professional live meeting interpreter.',
+        'Translate the transcript into clear Simplified Chinese for a parent or business user reading live captions.',
+        'Preserve names, numbers, dates, school terms, action items, and tone.',
+        'Do not add facts. If the transcript is fragmentary, translate only what is present.',
+        'Return JSON with translation and summary.'
+      ].join('\n'),
+      input: [
+        `Target language: ${targetLanguage}`,
+        '',
+        'Transcript:',
+        String(transcript || '').trim()
+      ].join('\n'),
+      text: {
+        format: {
+          type: 'json_schema',
+          name: 'economical_text_translation',
+          strict: true,
+          schema: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+              translation: { type: 'string' },
+              summary: { type: 'string' }
+            },
+            required: ['translation', 'summary']
+          }
+        }
+      }
+    };
+  }
+
+  function normalizeTextTranslationOutput(data) {
+    const raw = data?.output_text
+      || data?.output?.flatMap((item) => item?.content || [])
+        .map((content) => content?.text || '')
+        .join('')
+      || '';
+    try {
+      const parsed = raw ? JSON.parse(raw) : {};
+      return {
+        targetText: String(parsed.translation || '').trim(),
+        summary: String(parsed.summary || '').trim()
+      };
+    } catch {
+      return {
+        targetText: String(raw || '').trim(),
+        summary: ''
+      };
+    }
+  }
+
   app.use(express.json({ limit: '50mb' }));
   app.use(cors());
   app.use(express.static(path.join(__dirname, '..', 'public')));
@@ -292,6 +351,77 @@ function createApp(options = {}) {
       res.json(normalizeReplyOutput(response.data));
     } catch (error) {
       console.error('OpenAI reply translation错误:', error.response?.data || error.message);
+      res.status(500).json({ error: error.response?.data?.error?.message || error.message });
+    }
+  });
+
+  app.post([
+    '/api/openai/text-translation',
+    '/api-proxy/api/openai/text-translation'
+  ], async (req, res) => {
+    try {
+      if (!openaiApiKey) {
+        return res.status(500).json({ error: 'OpenAI API密钥未配置，无法使用省钱文字模式' });
+      }
+
+      const audioBase64 = String(req.body?.audioBase64 || '').trim();
+      if (!audioBase64) {
+        return res.status(400).json({ error: '缺少音频数据，无法转写' });
+      }
+
+      const audioBuffer = Buffer.from(audioBase64, 'base64');
+      const formData = new FormData();
+      const stream = new Readable();
+      stream.push(audioBuffer);
+      stream.push(null);
+      formData.append('file', stream, {
+        filename: 'meeting-audio.webm',
+        contentType: req.body?.mimeType || 'audio/webm'
+      });
+      formData.append('model', process.env.OPENAI_TRANSCRIBE_MODEL || 'gpt-4o-mini-transcribe');
+      if (req.body?.previousTranscript) {
+        formData.append('prompt', String(req.body.previousTranscript).slice(-1600));
+      }
+
+      const transcriptionResponse = await httpClient.post(
+        'https://api.openai.com/v1/audio/transcriptions',
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${openaiApiKey}`,
+            ...formData.getHeaders()
+          },
+          timeout: 60000,
+          maxContentLength: Infinity,
+          maxBodyLength: Infinity
+        }
+      );
+      const sourceText = String(transcriptionResponse.data?.text || '').trim();
+      if (!sourceText) {
+        return res.json({ sourceText: '', targetText: '', summary: '' });
+      }
+
+      const translationResponse = await httpClient.post(
+        'https://api.openai.com/v1/responses',
+        buildTextTranslationPayload({
+          transcript: sourceText,
+          targetLanguage: req.body?.targetLanguage || 'zh'
+        }),
+        {
+          headers: {
+            Authorization: `Bearer ${openaiApiKey}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 30000
+        }
+      );
+
+      res.json({
+        sourceText,
+        ...normalizeTextTranslationOutput(translationResponse.data)
+      });
+    } catch (error) {
+      console.error('OpenAI text translation错误:', error.response?.data || error.message);
       res.status(500).json({ error: error.response?.data?.error?.message || error.message });
     }
   });

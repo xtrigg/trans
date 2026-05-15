@@ -50,6 +50,31 @@ test('listening work area can disable translated Chinese speech playback', () =>
   assert.match(html, /translator\.setOutputAudioEnabled\(listenAudioEnabled\.checked\)/);
 });
 
+test('meeting page defaults to economical text mode with focused reading controls', () => {
+  const html = fs.readFileSync(path.join(root, 'public', 'realtime-translation-poc.html'), 'utf8');
+
+  assert.match(html, /id="modeText"/);
+  assert.match(html, /value="text" checked/);
+  assert.match(html, /省钱文字模式/);
+  assert.match(html, /id="controlDrawer"/);
+  assert.match(html, /id="toggleControlsBtn"/);
+  assert.match(html, /id="readingLayout"/);
+  assert.match(html, /class="translation-panel primary-reading"/);
+  assert.match(html, /id="sourcePanel"/);
+  assert.match(html, /id="showSourceText"/);
+});
+
+test('meeting page includes session cost guard and PTT keyboard control', () => {
+  const html = fs.readFileSync(path.join(root, 'public', 'realtime-translation-poc.html'), 'utf8');
+
+  assert.match(html, /DEFAULT_SESSION_LIMIT_MS = 60 \* 60 \* 1000/);
+  assert.match(html, /id="sessionCountdown"/);
+  assert.match(html, /id="timeoutOverlay"/);
+  assert.match(html, /延长 15 分钟/);
+  assert.match(html, /toggleCaptureByPtt/);
+  assert.match(html, /Space/);
+});
+
 test('legacy trans page exposes a visible status message target', () => {
   const html = fs.readFileSync(path.join(root, 'public', 'trans.html'), 'utf8');
 

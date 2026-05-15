@@ -6,5 +6,6 @@ routes = [
   { pattern = "xcu.ai/trans*", zone_name = "xcu.ai" },
   { pattern = "xcu.ai/api-proxy/api/openai/realtime-translation/session", zone_name = "xcu.ai" },
   { pattern = "xcu.ai/api-proxy/api/openai/reply-translation", zone_name = "xcu.ai" },
-  { pattern = "xcu.ai/api-proxy/api/openai/reply-speech", zone_name = "xcu.ai" }
+  { pattern = "xcu.ai/api-proxy/api/openai/reply-speech", zone_name = "xcu.ai" },
+  { pattern = "xcu.ai/api-proxy/api/openai/text-translation", zone_name = "xcu.ai" }
 ]
