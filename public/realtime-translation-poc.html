@@ -66,7 +66,7 @@
     <div class="topbar">
       <div>
         <h1>实时语音翻译</h1>
-        <div class="metrics">我听别人：默认省钱文字模式。需要中文译声时，可在控制面板切换到实时译声模式。</div>
+        <div class="metrics">我听别人：默认实时译声模式。省钱文字模式作为备用，不生成中文译声。</div>
       </div>
       <button id="toggleControlsBtn" class="floating-controls" aria-controls="controlDrawer" aria-expanded="false">控制</button>
     </div>
@@ -75,7 +75,7 @@
       <button id="startBtn" class="primary">开始录音并实时翻译</button>
       <button id="stopBtn" class="secondary" disabled>停止录音</button>
       <div id="sessionCountdown" class="timer">最长 60:00</div>
-      <div id="status" class="status">准备就绪。省钱文字模式只生成文字，不生成中文译声。</div>
+      <div id="status" class="status">准备就绪。默认使用实时译声模式，可在控制面板切换省钱文字备用模式。</div>
     </div>
 
     <section id="readingLayout" class="reading-layout" aria-label="会议翻译阅读区">
@@ -106,8 +106,8 @@
     <section class="drawer-section">
       <h3>翻译模式</h3>
       <div class="option-list">
-        <label><input id="modeText" name="translationMode" type="radio" value="text" checked>省钱文字模式</label>
-        <label><input id="modeRealtime" name="translationMode" type="radio" value="realtime">实时译声模式</label>
+        <label><input id="modeRealtime" name="translationMode" type="radio" value="realtime" checked>实时译声模式</label>
+        <label><input id="modeText" name="translationMode" type="radio" value="text">省钱文字模式</label>
       </div>
       <div class="inline-options">
         <label>翻译成
@@ -120,10 +120,16 @@
             <option value="fr">法语</option>
           </select>
         </label>
+        <label>话筒
+          <select id="inputDevice">
+            <option value="">默认话筒</option>
+          </select>
+        </label>
+        <button id="refreshDevicesBtn" class="secondary" type="button">刷新话筒</button>
       </div>
       <div class="inline-options">
         <label><input id="showSourceText" type="checkbox">显示英文原文</label>
-        <label><input id="listenAudioEnabled" type="checkbox">听中文译声</label>
+        <label><input id="listenAudioEnabled" type="checkbox" checked>听中文译声</label>
       </div>
       <audio id="remoteAudio" controls autoplay aria-label="翻译后的声音输出"></audio>
     </section>
@@ -134,7 +140,7 @@
       <div class="button-row">
         <button id="extendSessionBtn" class="secondary">延长 15 分钟</button>
       </div>
-      <p class="metrics">PTT：按 <strong>Space</strong> 切换开始/停止。蓝牙遥控器如能映射为空格，也可使用。</p>
+      <p class="metrics">PTT：按 <strong>Space</strong> 切换开始/停止。蓝牙遥控器如能映射为空格，也可使用；蓝牙麦克风可在“话筒”里选择。</p>
     </section>
 
     <section class="drawer-section" aria-labelledby="replyTitle">
@@ -206,6 +212,8 @@
     const showSourceText = document.getElementById('showSourceText');
     const sourcePanel = document.getElementById('sourcePanel');
     const listenAudioEnabled = document.getElementById('listenAudioEnabled');
+    const inputDevice = document.getElementById('inputDevice');
+    const refreshDevicesBtn = document.getElementById('refreshDevicesBtn');
     const remoteAudio = document.getElementById('remoteAudio');
     const toggleControlsBtn = document.getElementById('toggleControlsBtn');
     const closeControlsBtn = document.getElementById('closeControlsBtn');
@@ -234,7 +242,7 @@
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
     let replyRecognition = null;
-    let activeMode = 'text';
+    let activeMode = 'realtime';
     let transcriptState = { sourceText: '', targetText: '' };
     let sessionEndsAt = null;
     let countdownTimer = null;
@@ -285,6 +293,30 @@
 
     function getSelectedMode() {
       return modeRealtime.checked ? 'realtime' : 'text';
+    }
+
+    function getSelectedDeviceId() {
+      return inputDevice.value || undefined;
+    }
+
+    async function refreshInputDevices() {
+      if (!navigator.mediaDevices?.enumerateDevices) {
+        setStatus('当前浏览器不能列出话筒。会使用默认话筒。');
+        return;
+      }
+      const selected = inputDevice.value;
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const audioInputs = devices.filter((device) => device.kind === 'audioinput');
+      inputDevice.innerHTML = '<option value="">默认话筒</option>';
+      audioInputs.forEach((device, index) => {
+        const option = document.createElement('option');
+        option.value = device.deviceId;
+        option.textContent = device.label || `话筒 ${index + 1}`;
+        inputDevice.appendChild(option);
+      });
+      if ([...inputDevice.options].some((option) => option.value === selected)) {
+        inputDevice.value = selected;
+      }
     }
 
     function syncModeControls() {
@@ -372,13 +404,16 @@
         if (activeMode === 'realtime') {
           await realtimeTranslator.start({
             targetLanguage: targetLanguage.value,
+            deviceId: getSelectedDeviceId(),
             playTranslatedAudio: listenAudioEnabled.checked
           });
         } else {
           await textTranslator.start({
-            targetLanguage: targetLanguage.value
+            targetLanguage: targetLanguage.value,
+            deviceId: getSelectedDeviceId()
           });
         }
+        refreshInputDevices().catch(() => {});
       } catch (error) {
         stopCapture(error.message || String(error), true);
       }
@@ -545,6 +580,12 @@
         statusEl.textContent = '中文译声已关闭，只保留屏幕上的中文翻译。';
       }
     });
+    refreshDevicesBtn.addEventListener('click', () => {
+      refreshInputDevices().catch((error) => setStatus(error.message || String(error), true));
+    });
+    navigator.mediaDevices?.addEventListener?.('devicechange', () => {
+      refreshInputDevices().catch(() => {});
+    });
     toggleControlsBtn.addEventListener('click', () => setDrawerOpen(!controlDrawer.classList.contains('open')));
     closeControlsBtn.addEventListener('click', () => setDrawerOpen(false));
     extendSessionBtn.addEventListener('click', extendSession);
@@ -590,6 +631,7 @@
     });
 
     syncModeControls();
+    refreshInputDevices().catch(() => {});
   </script>
 </body>
 </html>

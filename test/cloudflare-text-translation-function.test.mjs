@@ -84,3 +84,38 @@ test('text translation function transcribes audio and translates transcript', as
     globalThis.fetch = originalFetch;
   }
 });
+
+test('text translation function skips recoverable unsupported audio chunks', async () => {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    error: {
+      message: 'Audio file might be corrupted or unsupported'
+    }
+  }), {
+    status: 400,
+    headers: { 'Content-Type': 'application/json' }
+  });
+
+  try {
+    const response = await onRequestPost({
+      env: { OPENAI_API_KEY: 'test-key' },
+      request: new Request('https://example.com/api/openai/text-translation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          audioBase64: Buffer.from('bad-audio').toString('base64'),
+          mimeType: 'audio/webm',
+          targetLanguage: 'zh'
+        })
+      })
+    });
+    const body = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(body.skipped, true);
+    assert.match(body.warning, /音频片段/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

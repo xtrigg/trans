@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   appendSegmentText,
   buildTextTranslationRequestBody,
+  isRecoverableAudioError,
   getSupportedMimeType
 } from '../public/text-translation.mjs';
 
@@ -46,4 +47,9 @@ test('selects a supported MediaRecorder mime type with fallback', () => {
   } finally {
     globalThis.MediaRecorder = originalMediaRecorder;
   }
+});
+
+test('treats corrupted or unsupported audio transcription as recoverable', () => {
+  assert.equal(isRecoverableAudioError(new Error('Audio file might be corrupted or unsupported')), true);
+  assert.equal(isRecoverableAudioError(new Error('OpenAI API密钥未配置')), false);
 });

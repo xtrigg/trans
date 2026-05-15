@@ -76,7 +76,8 @@ export class OpenAIRealtimeTranslator {
     }
 
     try {
-      this.localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const audioConstraints = options?.deviceId ? { deviceId: { exact: options.deviceId } } : true;
+      this.localStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
     } catch (error) {
       if (error?.name === 'NotAllowedError' || error?.name === 'PermissionDeniedError') {
         throw new Error('麦克风权限被拒绝。请在浏览器地址栏允许麦克风后再开始。');

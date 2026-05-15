@@ -29,6 +29,17 @@ function bytesFromBase64(value) {
   return bytes;
 }
 
+function isRecoverableTranscriptionError(message) {
+  const normalized = String(message || '').toLowerCase();
+  return [
+    'corrupted',
+    'unsupported',
+    'could not be decoded',
+    'invalid file format',
+    'audio file'
+  ].some((signal) => normalized.includes(signal));
+}
+
 export function buildTextTranslationPrompt({
   transcript,
   targetLanguage = 'zh'
@@ -106,7 +117,10 @@ async function transcribeAudio({ openaiApiKey, audioBase64, mimeType, previousTr
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data?.error?.message || data?.error || `OpenAI transcription failed: ${response.status}`);
+    const message = data?.error?.message || data?.error || `OpenAI transcription failed: ${response.status}`;
+    const error = new Error(message);
+    error.recoverable = isRecoverableTranscriptionError(message);
+    throw error;
   }
   return String(data.text || '').trim();
 }
@@ -158,6 +172,15 @@ export async function onRequestPost(context) {
     });
     return jsonResponse({ sourceText, ...translated });
   } catch (error) {
+    if (error?.recoverable) {
+      return jsonResponse({
+        skipped: true,
+        sourceText: '',
+        targetText: '',
+        summary: '',
+        warning: '音频片段无法识别，已跳过。请继续说话，或切换到实时译声模式。'
+      });
+    }
     return jsonResponse({ error: error?.message || String(error) }, 500);
   }
 }

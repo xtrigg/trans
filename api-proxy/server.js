@@ -159,6 +159,17 @@ function createApp(options = {}) {
     }
   }
 
+  function isRecoverableAudioErrorMessage(message) {
+    const normalized = String(message || '').toLowerCase();
+    return [
+      'corrupted',
+      'unsupported',
+      'could not be decoded',
+      'invalid file format',
+      'audio file'
+    ].some((signal) => normalized.includes(signal));
+  }
+
   app.use(express.json({ limit: '50mb' }));
   app.use(cors());
   app.use(express.static(path.join(__dirname, '..', 'public')));
@@ -422,7 +433,17 @@ function createApp(options = {}) {
       });
     } catch (error) {
       console.error('OpenAI text translation错误:', error.response?.data || error.message);
-      res.status(500).json({ error: error.response?.data?.error?.message || error.message });
+      const message = error.response?.data?.error?.message || error.response?.data?.error || error.message;
+      if (isRecoverableAudioErrorMessage(message)) {
+        return res.json({
+          skipped: true,
+          sourceText: '',
+          targetText: '',
+          summary: '',
+          warning: '音频片段无法识别，已跳过。请继续说话，或切换到实时译声模式。'
+        });
+      }
+      res.status(500).json({ error: message });
     }
   });
 

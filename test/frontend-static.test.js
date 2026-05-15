@@ -50,11 +50,13 @@ test('listening work area can disable translated Chinese speech playback', () =>
   assert.match(html, /translator\.setOutputAudioEnabled\(listenAudioEnabled\.checked\)/);
 });
 
-test('meeting page defaults to economical text mode with focused reading controls', () => {
+test('meeting page defaults to realtime mode with focused reading controls and fallback mode', () => {
   const html = fs.readFileSync(path.join(root, 'public', 'realtime-translation-poc.html'), 'utf8');
 
   assert.match(html, /id="modeText"/);
-  assert.match(html, /value="text" checked/);
+  assert.match(html, /id="modeRealtime"/);
+  assert.match(html, /value="realtime" checked/);
+  assert.match(html, /实时译声模式/);
   assert.match(html, /省钱文字模式/);
   assert.match(html, /id="controlDrawer"/);
   assert.match(html, /id="toggleControlsBtn"/);
@@ -62,6 +64,8 @@ test('meeting page defaults to economical text mode with focused reading control
   assert.match(html, /class="translation-panel primary-reading"/);
   assert.match(html, /id="sourcePanel"/);
   assert.match(html, /id="showSourceText"/);
+  assert.match(html, /id="inputDevice"/);
+  assert.match(html, /refreshInputDevices/);
 });
 
 test('meeting page includes session cost guard and PTT keyboard control', () => {
