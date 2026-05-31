@@ -22,6 +22,9 @@ test('protects the translation page with a password form', async () => {
 
   assert.equal(response.status, 200);
   assert.match(html, /翻译工具访问验证/);
+  assert.match(html, /name="username"/);
+  assert.match(html, /value="ai"/);
+  assert.match(html, /autocomplete="username"/);
   assert.match(html, /name="password"/);
 });
 
@@ -37,8 +40,8 @@ test('rejects protected API requests without a trusted browser cookie', async ()
   assert.equal(await response.text(), 'Unauthorized');
 });
 
-test('sets a trusted browser cookie after correct password', async () => {
-  const body = new URLSearchParams({ password: 'test-password', next: '/trans/' });
+test('sets a trusted browser cookie after correct username and password', async () => {
+  const body = new URLSearchParams({ username: 'ai', password: 'test-password', next: '/trans/' });
   const response = await onRequest(makeContext({
     url: 'https://trans-c2s.pages.dev/trans-login',
     method: 'POST',
@@ -52,8 +55,23 @@ test('sets a trusted browser cookie after correct password', async () => {
   assert.match(response.headers.get('Set-Cookie') || '', /HttpOnly/);
 });
 
+test('rejects a wrong username even when the password is correct', async () => {
+  const body = new URLSearchParams({ username: 'other', password: 'test-password', next: '/trans/' });
+  const response = await onRequest(makeContext({
+    url: 'https://trans-c2s.pages.dev/trans-login',
+    method: 'POST',
+    body,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+  }));
+  const html = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.match(html, /用户名或密码不正确/);
+  assert.doesNotMatch(response.headers.get('Set-Cookie') || '', /xcu_trans_auth=/);
+});
+
 test('allows protected requests with a trusted browser cookie', async () => {
-  const loginBody = new URLSearchParams({ password: 'test-password', next: '/trans/' });
+  const loginBody = new URLSearchParams({ username: 'ai', password: 'test-password', next: '/trans/' });
   const login = await onRequest(makeContext({
     url: 'https://trans-c2s.pages.dev/trans-login',
     method: 'POST',

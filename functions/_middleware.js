@@ -2,6 +2,7 @@ const COOKIE_NAME = 'xcu_trans_auth';
 const MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 const LOGIN_PATH = '/trans-login';
 const LOGOUT_PATH = '/trans-logout';
+const ACCESS_USERNAME = 'ai';
 
 const PROTECTED_PREFIXES = [
   '/trans',
@@ -113,9 +114,11 @@ function loginPage(error = '') {
 <body>
   <main>
     <h1>翻译工具访问验证</h1>
-    <p>输入访问密码后，这台浏览器会被信任 30 天。</p>
+    <p>输入用户名和访问密码后，这台浏览器会被信任 30 天。</p>
     <form method="post" action="${LOGIN_PATH}">
       <input type="hidden" name="next" value="/trans/">
+      <label for="username">用户名</label>
+      <input id="username" name="username" type="text" value="${ACCESS_USERNAME}" autocomplete="username" required>
       <label for="password">访问密码</label>
       <input id="password" name="password" type="password" autocomplete="current-password" autofocus required>
       <button type="submit">进入翻译工具</button>
@@ -129,6 +132,7 @@ function loginPage(error = '') {
 async function parseForm(request) {
   const formData = await request.formData();
   return {
+    username: String(formData.get('username') || ''),
     password: String(formData.get('password') || ''),
     next: String(formData.get('next') || '/trans/')
   };
@@ -158,8 +162,8 @@ export async function onRequest(context) {
       return textResponse('Access password is not configured.', 500);
     }
     const form = await parseForm(request);
-    if (!timingSafeEqual(form.password, env.TRANS_ACCESS_PASSWORD)) {
-      return loginPage('密码不正确。');
+    if (!timingSafeEqual(form.username, ACCESS_USERNAME) || !timingSafeEqual(form.password, env.TRANS_ACCESS_PASSWORD)) {
+      return loginPage('用户名或密码不正确。');
     }
     return new Response(null, {
       status: 302,
