@@ -17,6 +17,17 @@ test('router maps trans static assets to Pages assets', () => {
   );
 });
 
+test('router maps translation login and logout actions to Pages middleware', () => {
+  assert.equal(
+    getUpstreamUrl('https://xcu.ai/trans-login').toString(),
+    'https://trans-c2s.pages.dev/trans-login'
+  );
+  assert.equal(
+    getUpstreamUrl('https://xcu.ai/trans-logout').toString(),
+    'https://trans-c2s.pages.dev/trans-logout'
+  );
+});
+
 test('router maps realtime session API to Pages Function', () => {
   assert.equal(
     getUpstreamUrl('https://xcu.ai/api-proxy/api/openai/realtime-translation/session').toString(),

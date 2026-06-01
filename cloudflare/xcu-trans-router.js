@@ -10,6 +10,11 @@ function getUpstreamUrl(requestUrl) {
     return upstream;
   }
 
+  if (url.pathname === '/trans-login' || url.pathname === '/trans-logout') {
+    upstream.pathname = url.pathname;
+    return upstream;
+  }
+
   if (url.pathname.startsWith('/trans/')) {
     const strippedPath = url.pathname.slice('/trans'.length);
     upstream.pathname = strippedPath === '/realtime-translation-poc.html'
