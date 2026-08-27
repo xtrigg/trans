@@ -39,6 +39,17 @@ test('protects the 260 showing page and returns to it after login', async () => 
   assert.match(html, /name="next" value="\/260\/"/);
 });
 
+test('root login defaults back to the translation entry instead of the homepage', async () => {
+  const response = await onRequest(makeContext({
+    url: 'https://trans-c2s.pages.dev/'
+  }));
+  const html = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.match(html, /翻译工具访问验证/);
+  assert.match(html, /name="next" value="\/trans\/"/);
+});
+
 test('allows 260 PWA install assets without a trusted browser cookie', async () => {
   const manifest = await onRequest(makeContext({
     url: 'https://trans-c2s.pages.dev/260/manifest.webmanifest'

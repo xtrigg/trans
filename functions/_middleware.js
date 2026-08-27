@@ -216,5 +216,6 @@ export async function onRequest(context) {
     return textResponse('Unauthorized', 401);
   }
 
-  return loginPage('', url.pathname);
+  const nextPath = url.pathname === '/' || url.pathname === '/index.html' ? '/trans/' : url.pathname;
+  return loginPage('', nextPath);
 }
