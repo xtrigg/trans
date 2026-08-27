@@ -28,6 +28,31 @@ test('protects the translation page with a password form', async () => {
   assert.match(html, /name="password"/);
 });
 
+test('protects the 260 showing page and returns to it after login', async () => {
+  const response = await onRequest(makeContext({
+    url: 'https://trans-c2s.pages.dev/260/'
+  }));
+  const html = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.match(html, /翻译工具访问验证/);
+  assert.match(html, /name="next" value="\/260\/"/);
+});
+
+test('allows 260 PWA install assets without a trusted browser cookie', async () => {
+  const manifest = await onRequest(makeContext({
+    url: 'https://trans-c2s.pages.dev/260/manifest.webmanifest'
+  }));
+  const icon = await onRequest(makeContext({
+    url: 'https://trans-c2s.pages.dev/260/icon.svg'
+  }));
+
+  assert.equal(manifest.status, 200);
+  assert.equal(await manifest.text(), 'NEXT');
+  assert.equal(icon.status, 200);
+  assert.equal(await icon.text(), 'NEXT');
+});
+
 test('rejects protected API requests without a trusted browser cookie', async () => {
   const response = await onRequest(makeContext({
     url: 'https://trans-c2s.pages.dev/api-proxy/api/openai/realtime-translation/session',
@@ -53,6 +78,20 @@ test('sets a trusted browser cookie after correct username and password', async 
   assert.equal(response.headers.get('Location'), '/trans/');
   assert.match(response.headers.get('Set-Cookie') || '', /xcu_trans_auth=/);
   assert.match(response.headers.get('Set-Cookie') || '', /HttpOnly/);
+});
+
+test('accepts copied credentials with surrounding whitespace', async () => {
+  const body = new URLSearchParams({ username: ' ai ', password: ' test-password \n', next: '/trans/' });
+  const response = await onRequest(makeContext({
+    url: 'https://trans-c2s.pages.dev/trans-login',
+    method: 'POST',
+    body,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+  }));
+
+  assert.equal(response.status, 302);
+  assert.equal(response.headers.get('Location'), '/trans/');
+  assert.match(response.headers.get('Set-Cookie') || '', /xcu_trans_auth=/);
 });
 
 test('rejects a wrong username even when the password is correct', async () => {

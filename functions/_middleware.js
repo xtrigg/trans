@@ -4,7 +4,13 @@ const LOGIN_PATH = '/trans-login';
 const LOGOUT_PATH = '/trans-logout';
 const ACCESS_USERNAME = 'ai';
 
+const PUBLIC_PATHS = [
+  '/260/manifest.webmanifest',
+  '/260/icon.svg'
+];
+
 const PROTECTED_PREFIXES = [
+  '/260',
   '/trans',
   '/realtime-translation-poc',
   '/realtime-translation-poc.html',
@@ -15,6 +21,7 @@ const PROTECTED_PREFIXES = [
 ];
 
 function isProtectedPath(pathname) {
+  if (PUBLIC_PATHS.includes(pathname)) return false;
   if (pathname === '/' || pathname === '/index.html') return true;
   return PROTECTED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(prefix));
 }
@@ -92,7 +99,18 @@ async function isTrustedBrowser(request, env) {
   return timingSafeEqual(signature, expected);
 }
 
-function loginPage(error = '') {
+function escapeHtml(value) {
+  return String(value || '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[char]);
+}
+
+function loginPage(error = '', nextPath = '/trans/') {
+  const safeNext = safeNextPath(nextPath);
   return htmlResponse(`<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -116,13 +134,13 @@ function loginPage(error = '') {
     <h1>翻译工具访问验证</h1>
     <p>输入用户名和访问密码后，这台浏览器会被信任 30 天。</p>
     <form method="post" action="${LOGIN_PATH}">
-      <input type="hidden" name="next" value="/trans/">
+      <input type="hidden" name="next" value="${escapeHtml(safeNext)}">
       <label for="username">用户名</label>
       <input id="username" name="username" type="text" value="${ACCESS_USERNAME}" autocomplete="username" required>
       <label for="password">访问密码</label>
       <input id="password" name="password" type="password" autocomplete="current-password" autofocus required>
       <button type="submit">进入翻译工具</button>
-      ${error ? `<div class="error">${error}</div>` : ''}
+      ${error ? `<div class="error">${escapeHtml(error)}</div>` : ''}
     </form>
   </main>
 </body>
@@ -132,8 +150,8 @@ function loginPage(error = '') {
 async function parseForm(request) {
   const formData = await request.formData();
   return {
-    username: String(formData.get('username') || ''),
-    password: String(formData.get('password') || ''),
+    username: String(formData.get('username') || '').trim(),
+    password: String(formData.get('password') || '').trim(),
     next: String(formData.get('next') || '/trans/')
   };
 }
@@ -198,5 +216,5 @@ export async function onRequest(context) {
     return textResponse('Unauthorized', 401);
   }
 
-  return loginPage();
+  return loginPage('', url.pathname);
 }
